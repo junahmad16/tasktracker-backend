@@ -260,6 +260,15 @@ app.get('/tasks', (req, res) => {
   res.json({ tasks });
 });
 
+// Return non-sensitive config (backendUrl, digestTime, timezone, name — NOT pins or email keys)
+app.get('/config', (req, res) => {
+  res.json({
+    digestTime: cfg.digestTime,
+    timezone: cfg.timezone,
+    name: cfg.name
+  });
+});
+
 // Manual trigger for testing
 app.post('/test-digest', async (req, res) => {
   const overdue  = tasks.filter(t => !t.done && t.dueDate && getStatus(t) === 'overdue');
