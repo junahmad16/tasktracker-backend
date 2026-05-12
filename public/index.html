@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F7F6F2;--surface:#FFF;--surface2:#F0EEE9;
+    --border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.18);
+    --text:#1A1916;--text-muted:#6B6960;--text-hint:#9E9B93;
+    --red:#C1392B;--red-bg:#FDF0EE;--red-border:#F4C4BD;
+    --amber:#B7670A;--amber-bg:#FDF5E6;--amber-border:#F2D48A;
+    --blue:#1A5FA8;--blue-bg:#EBF2FB;--blue-border:#AECBEE;
+    --green:#2A6E3F;--green-bg:#EAF5EE;--green-border:#9ED4B2;
+    --purple:#5B35B0;--purple-bg:#F2EEFB;--purple-border:#C9B8F0;
+    --radius:10px;--radius-lg:14px;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 16px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+  /* LOGIN */
+  .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem 2rem;width:340px;max-width:95vw;box-shadow:var(--shadow-md)}
+  .login-brand{display:flex;align-items:center;gap:8px;margin-bottom:1.75rem}
+  .login-brand-dot{width:10px;height:10px;background:var(--text);border-radius:50%}
+  .login-brand-name{font-size:16px;font-weight:600;letter-spacing:-.3px}
+  .login-label{font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px;display:block}
+  .login-input{width:100%;padding:9px 12px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;letter-spacing:.15em;margin-bottom:12px}
+  .login-input:focus{border-color:var(--border-strong);background:var(--surface)}
+  .login-btn{width:100%;padding:9px;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;background:var(--text);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;transition:opacity .15s}
+  .login-btn:hover{opacity:.85}
+  .login-error{font-size:12px;color:var(--red);margin-top:8px;min-height:16px}
+  .login-hint{font-size:12px;color:var(--text-hint);margin-top:1rem;text-align:center}
+  .role-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;border:1px solid}
+  .role-badge.admin{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
+  .role-badge.editor{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50}
+  .header-brand{font-size:15px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+  .brand-dot{width:8px;height:8px;background:var(--text);border-radius:50%}
+  .header-nav{display:flex;gap:2px}
+  .nav-btn{padding:5px 14px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;border:1px solid transparent;border-radius:var(--radius);cursor:pointer;background:transparent;color:var(--text-muted);transition:all .15s;position:relative}
+  .nav-btn:hover{background:var(--surface2);color:var(--text)}
+  .nav-btn.active{background:var(--text);color:#fff;font-weight:500}
+  .pip{position:absolute;top:4px;right:4px;width:6px;height:6px;background:var(--red);border-radius:50%;display:none}
+  .header-right{display:flex;gap:8px;align-items:center}
+  .btn-primary{display:flex;align-items:center;gap:6px;padding:7px 16px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;background:var(--text);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;transition:opacity .15s}
+  .btn-primary:hover{opacity:.85}
+  .btn-settings{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:transparent;color:var(--text-muted);font-size:17px;transition:all .12s}
+  .btn-settings:hover{background:var(--surface2);color:var(--text)}
+  .main{max-width:900px;margin:0 auto;padding:2rem 1.5rem}
+  .setup-banner{background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius);padding:12px 16px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .setup-banner-text{font-size:13px;color:var(--purple)}
+  .setup-banner-text strong{font-weight:600}
+  .btn-configure{padding:6px 14px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;background:var(--purple);color:#fff;border:none;border-radius:8px;cursor:pointer}
+  .email-status-bar{font-size:12px;color:var(--green);background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius);padding:8px 14px;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
+  .alert{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--radius);font-size:13px;border:1px solid}
+  .alert.danger{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+  .alert.warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
+  .alert strong{font-weight:600}
+  .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)}
+  .stat-label{font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px}
+  .stat-val{font-size:28px;font-weight:300;font-family:'DM Mono',monospace;color:var(--text)}
+  .stat-val.red{color:var(--red)}.stat-val.amber{color:var(--amber)}.stat-val.blue{color:var(--blue)}.stat-val.green{color:var(--green)}
+  .toolbar{display:flex;gap:8px;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+  .search-wrap{flex:1;min-width:180px;position:relative}
+  .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-hint)}
+  .search-input{width:100%;padding:7px 10px 7px 32px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none}
+  select.filter-sel{padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;cursor:pointer}
+  .task-list{display:flex;flex-direction:column;gap:8px}
+  .task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
+  .task-card:hover{box-shadow:var(--shadow-md);border-color:var(--border-strong)}
+  .task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+  .task-card.overdue::before{background:var(--red)}
+  .task-card.due-today::before{background:var(--amber)}
+  .task-card.due-soon::before{background:var(--blue)}
+  .task-card.done{opacity:.55}
+  .task-card.done::before{background:var(--green)}
+  .tc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .tc-title{font-size:14px;font-weight:500;flex:1;line-height:1.45}
+  .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.03em;flex-shrink:0;border:1px solid}
+  .badge.overdue{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+  .badge.due-today{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+  .badge.due-soon{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+  .badge.done{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+  .badge.pending{background:var(--surface2);color:var(--text-muted);border-color:var(--border)}
+  .tc-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--text-muted);margin-bottom:10px}
+  .tc-overdue{display:inline-block;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+  .tc-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+  .act-btn{padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .12s}
+  .act-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border-strong)}
+  .act-btn.done-btn{color:var(--green);border-color:var(--green-border)}
+  .act-btn.done-btn:hover{background:var(--green-bg)}
+  .act-btn.del-btn:hover{color:var(--red);border-color:var(--red-border);background:var(--red-bg)}
+  .empty-state{text-align:center;padding:4rem 1rem;color:var(--text-hint);font-size:14px}
+  .empty-state p{margin-top:6px;font-size:13px}
+  .section-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:1rem}
+  .log-list{display:flex;flex-direction:column;gap:8px}
+  .log-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+  .log-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .log-card-title{font-size:13px;font-weight:500}
+  .log-time{font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint)}
+  .log-card-meta{font-size:12px;color:var(--text-muted)}
+  .log-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;border:1px solid}
+  .log-badge.digest{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+  .log-badge.instant{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+  .log-badge.test{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
+  .log-badge.error{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+  /* MODALS */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,12,.45);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-lg);padding:1.75rem;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-md);animation:modalIn .18s ease}
+  .modal.narrow{width:520px}
+  @keyframes modalIn{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:none}}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+  .modal-title{font-size:16px;font-weight:600}
+  .modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:transparent;color:var(--text-muted);font-size:16px;transition:all .12s}
+  .modal-close:hover{background:var(--surface2);color:var(--text)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:8px 11px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;transition:border-color .15s}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border-strong);background:var(--surface)}
+  .field textarea{resize:vertical;min-height:72px}
+  .field .hint{font-size:11px;color:var(--text-hint);margin-top:4px}
+  .field .hint a{color:var(--blue);text-decoration:none}
+  .field .hint a:hover{text-decoration:underline}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal-footer{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+  .modal-footer.spread{justify-content:space-between}
+  .btn-ghost{padding:7px 16px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;background:transparent;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--text-muted);transition:all .12s}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text)}
+  .divider{height:1px;background:var(--border);margin:1.25rem 0}
+  .steps{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
+  .step{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-muted)}
+  .step-n{min-width:20px;height:20px;background:var(--text);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;margin-top:2px}
+  .step a{color:var(--blue);text-decoration:none}
+  .step a:hover{text-decoration:underline}
+  code{font-family:'DM Mono',monospace;font-size:12px;background:var(--surface2);padding:1px 5px;border-radius:4px}
+  @media(max-width:640px){.stats-row{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.header{padding:0 1rem}.main{padding:1rem}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-brand"><div class="login-brand-dot"></div><span class="login-brand-name">Task Tracker</span></div>
+    <label class="login-label">Enter your PIN to continue</label>
+    <input class="login-input" type="password" id="login-pin" maxlength="20" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-hint">Contact your administrator if you need access.</div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until logged in) -->
+<div id="app" style="display:none">
+<header class="header">
+  <div class="header-brand"><div class="brand-dot"></div>Task Tracker</div>
+  <div class="header-nav">
+    <button class="nav-btn active" onclick="showView('tasks',this)">Tasks</button>
+    <button class="nav-btn" onclick="showView('log',this)" id="log-tab" style="display:none">
+      Email log <span class="pip" id="log-pip"></span>
+    </button>
+  </div>
+  <div class="header-right">
+    <span id="sync-status" style="display:none;font-size:12px;font-weight:500;padding:3px 8px;border-radius:6px;background:var(--surface2)"></span>
+    <span id="role-indicator"></span>
+    <button class="btn-settings" id="btn-settings" onclick="openSettings()" title="Email settings" style="display:none">⚙</button>
+    <button class="btn-primary" id="btn-add-task" onclick="openAddTask()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Add task
+    </button>
+    <button class="btn-settings" onclick="doLogout()" title="Sign out" style="font-size:13px">↩</button>
+  </div>
+</header>
+
+<main class="main">
+  <div id="setup-area"></div>
+  <div id="alerts-area"></div>
+  <div id="view-tasks">
+    <div class="stats-row" id="stats-row"></div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5L12.5 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search-input" type="text" id="search-input" placeholder="Search tasks…" oninput="render()">
+      </div>
+      <select class="filter-sel" id="filter-status" onchange="render()">
+        <option value="">All statuses</option>
+        <option value="overdue">Overdue</option>
+        <option value="due-today">Due today</option>
+        <option value="due-soon">Due soon</option>
+        <option value="pending">Pending</option>
+        <option value="done">Done</option>
+      </select>
+      <select class="filter-sel" id="filter-assignee" onchange="render()">
+        <option value="">All assignees</option>
+      </select>
+    </div>
+    <div class="task-list" id="task-list"></div>
+  </div>
+  <div id="view-log" style="display:none">
+    <div class="section-label">Sent email reminders</div>
+    <div id="log-list-area"></div>
+  </div>
+</main>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal" onclick="closeBg(event,'settings-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Email reminder settings</span>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+      All reminders go to <strong>one inbox — yours</strong>. You get a single morning digest covering everything overdue or due that day, plus an instant alert the moment any task hits its deadline.
+    </p>
+    <div class="divider" style="margin-top:0"></div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">EmailJS setup — free, 200 emails/month</p>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div>Create a free account at <a href="https://www.emailjs.com" target="_blank">emailjs.com</a></div></div>
+      <div class="step"><div class="step-n">2</div><div>Go to <strong>Email Services</strong> → Add new service → connect Gmail or Outlook</div></div>
+      <div class="step"><div class="step-n">3</div><div>Go to <strong>Email Templates</strong> → Create template. Set: To = <code>{{to_email}}</code>, Subject = <code>{{subject}}</code>, Body = <code>{{message}}</code></div></div>
+      <div class="step"><div class="step-n">4</div><div>Copy your <strong>Public Key</strong> (Account → General), <strong>Service ID</strong>, and <strong>Template ID</strong> — paste below</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>Your email address (all reminders go here)</label>
+      <input type="email" id="s-email" placeholder="you@company.com">
+    </div>
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="s-name" placeholder="e.g. Sara">
+    </div>
+    <div class="field">
+      <label>EmailJS Public Key</label>
+      <input type="text" id="s-pubkey" placeholder="user_xxxxxxxxxxxxxxxxx">
+      <div class="hint"><a href="https://dashboard.emailjs.com/admin/account" target="_blank">Account → General → Public Key</a></div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Service ID</label>
+        <input type="text" id="s-service" placeholder="service_xxxxxxx">
+      </div>
+      <div class="field">
+        <label>Template ID</label>
+        <input type="text" id="s-template" placeholder="template_xxxxxxx">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Morning digest time</label>
+        <input type="time" id="s-digest-time" value="08:00">
+      </div>
+      <div class="field">
+        <label>Timezone</label>
+        <select id="s-timezone">
+          <option value="Asia/Riyadh">Riyadh (AST +3)</option>
+          <option value="Asia/Dubai">Dubai (GST +4)</option>
+          <option value="Asia/Kuwait">Kuwait (AST +3)</option>
+          <option value="Africa/Cairo">Cairo (EET +2)</option>
+          <option value="Europe/London">London (GMT/BST)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Backend URL <span style="color:var(--text-hint);font-weight:400">(paste your Railway URL here)</span></label>
+      <input type="url" id="s-backend" placeholder="https://your-app.railway.app">
+      <div class="hint">Once set, reminders fire 24/7 even with this tab closed</div>
+    </div>
+    <div class="divider"></div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Access PINs</p>
+    <div class="grid2">
+      <div class="field">
+        <label>Admin PIN <span style="color:var(--text-hint);font-weight:400">(you)</span></label>
+        <input type="password" id="s-admin-pin" placeholder="Set a PIN" autocomplete="new-password">
+        <div class="hint">Full access including settings</div>
+      </div>
+      <div class="field">
+        <label>Editor PIN <span style="color:var(--text-hint);font-weight:400">(HR)</span></label>
+        <input type="password" id="s-editor-pin" placeholder="Set a PIN" autocomplete="new-password">
+        <div class="hint">Can add &amp; edit tasks, no settings</div>
+      </div>
+    </div>
+    <div class="modal-footer spread">
+      <button class="btn-ghost" id="test-btn" onclick="sendTestEmail()">Send test email</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="closeSettings()">Cancel</button>
+        <button class="btn-primary" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT TASK MODAL -->
+<div class="modal-overlay" id="task-modal" onclick="closeBg(event,'task-modal')">
+  <div class="modal narrow">
+    <div class="modal-header">
+      <span class="modal-title" id="task-modal-title">Add new task</span>
+      <button class="modal-close" onclick="closeTaskModal()">✕</button>
+    </div>
+    <div class="field"><label>Task details *</label><textarea id="f-details" placeholder="Describe the task clearly…"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Assigned to</label><input type="text" id="f-to" placeholder="Full name"></div>
+      <div class="field"><label>Assigned by</label><input type="text" id="f-by" placeholder="Full name"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Assigned date</label><input type="date" id="f-adate"></div>
+      <div class="field"><label>Due date</label><input type="date" id="f-ddate"></div>
+    </div>
+    <div class="field">
+      <label>Due time <span style="color:var(--text-hint);font-weight:400">(leave blank = end of day)</span></label>
+      <input type="time" id="f-dtime" style="width:160px">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PERSISTENCE ──────────────────────────────────────
+const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
+let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
+  adminPin:'', editorPin:'' };
+
+// ── ROLES ─────────────────────────────────────────────
+// 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
+let currentRole = '';
+
+function doLogin() {
+  const pin = document.getElementById('login-pin').value.trim();
+  const err = document.getElementById('login-error');
+  if (!pin) { err.textContent = 'Please enter your PIN.'; return; }
+  if (cfg.adminPin && pin === cfg.adminPin) {
+    currentRole = 'admin';
+  } else if (cfg.editorPin && pin === cfg.editorPin) {
+    currentRole = 'editor';
+  } else if (!cfg.adminPin && !cfg.editorPin) {
+    // First run — no PINs set yet, allow admin access
+    currentRole = 'admin';
+  } else {
+    err.textContent = 'Incorrect PIN. Please try again.';
+    document.getElementById('login-pin').value = '';
+    return;
+  }
+  sessionStorage.setItem('tt_role', currentRole);
+  showApp();
+}
+
+function doLogout() {
+  currentRole = '';
+  sessionStorage.removeItem('tt_role');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  // Show/hide elements based on role
+  const isAdmin = currentRole === 'admin';
+  document.getElementById('btn-settings').style.display = isAdmin ? '' : 'none';
+  document.getElementById('log-tab').style.display = isAdmin ? '' : 'none';
+  document.getElementById('role-indicator').innerHTML = isAdmin
+    ? '<span class="role-badge admin">Admin</span>'
+    : '<span class="role-badge editor">Editor</span>';
+  renderSetupBanner();
+  render(); // render with local data immediately
+  initFromBackend().then(() => render()); // then re-render with fresh backend data
+}
+
+function isAdmin() { return currentRole === 'admin'; }
+function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
+let tasks = [], editId = null, overdueTimers = {}, digestTimer = null, emailLog = [];
+
+function loadCfg() {
+  try { const s=localStorage.getItem(CFG_KEY); if(s) cfg={...cfg,...JSON.parse(s)}; } catch(e){}
+  // Auto-detect backend URL if served from Railway (not file://)
+  if (window.location.protocol !== 'file:' && !cfg.backendUrl) {
+    cfg.backendUrl = window.location.origin;
+    saveCfg();
+  }
+  // Always use current origin if served from Railway
+  if (window.location.protocol !== 'file:') {
+    cfg.backendUrl = window.location.origin;
+  }
+}
+function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function loadTasks() { try { const s=localStorage.getItem(TASKS_KEY); if(s) tasks=JSON.parse(s); } catch(e){} }
+function saveTasks() {
+  try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch(e){}
+  pushToBackend();
+}
+async function pushToBackend() {
+  if (!cfg.backendUrl) { console.warn('No backendUrl set'); return; }
+  try {
+    const res = await fetch(cfg.backendUrl + '/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasks })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error('pushToBackend failed:', res.status, txt);
+      showSyncError('Tasks failed to sync: ' + res.status);
+    } else {
+      console.log('Tasks pushed to backend OK, count:', tasks.length);
+      showSyncOk();
+    }
+  } catch(e) {
+    console.error('pushToBackend error:', e.message);
+    showSyncError('Cannot reach backend: ' + e.message);
+  }
+}
+async function pushConfigToBackend() {
+  if (!cfg.backendUrl) return;
+  try {
+    const res = await fetch(cfg.backendUrl + '/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error('pushConfigToBackend failed:', res.status, txt);
+    } else {
+      console.log('Config pushed to backend OK');
+    }
+  } catch(e) { console.error('pushConfigToBackend error:', e.message); }
+}
+function showSyncError(msg) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = '⚠ ' + msg;
+  el.style.color = 'var(--red)';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+function showSyncOk() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = '✓ Synced';
+  el.style.color = 'var(--green)';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+// ── UTILS ────────────────────────────────────────────
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function dueDateTime(t) {
+  if (!t.dueDate) return null;
+  return t.dueTime ? new Date(t.dueDate+'T'+t.dueTime) : new Date(t.dueDate+'T23:59:59');
+}
+function getStatus(t) {
+  if (t.done) return 'done';
+  if (!t.dueDate) return 'pending';
+  const diff = dueDateTime(t) - new Date();
+  if (diff < 0) return 'overdue';
+  if (diff < 86400000) return 'due-today';
+  if (diff < 3*86400000) return 'due-soon';
+  return 'pending';
+}
+function overdueStr(t) {
+  const due = dueDateTime(t); if (!due) return '';
+  const diff = new Date() - due; if (diff <= 0) return '';
+  const d=Math.floor(diff/86400000), h=Math.floor((diff%86400000)/3600000), m=Math.floor((diff%3600000)/60000);
+  return d>0 ? `Overdue by ${d}d ${h}h ${m}m` : h>0 ? `Overdue by ${h}h ${m}m` : `Overdue by ${m}m`;
+}
+function fmtDate(d) { if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtTime(t) { if(!t) return ''; const [h,m]=t.split(':'); return `${+h%12||12}:${m} ${+h>=12?'PM':'AM'}`; }
+function statusLabel(s) { return {overdue:'Overdue','due-today':'Due today','due-soon':'Due soon',done:'Done',pending:'Pending'}[s]||'Pending'; }
+
+// ── EMAIL ────────────────────────────────────────────
+function emailReady() { return !!(cfg.email&&cfg.pubkey&&cfg.service&&cfg.template); }
+
+async function sendEmail(subject, message, type) {
+  if (!emailReady()) return false;
+  try {
+    const payload = {
+      service_id:  cfg.service,
+      template_id: cfg.template,
+      user_id:     cfg.pubkey,
+      template_params: { to_email: cfg.email, subject: subject, message: message }
+    };
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(res.status + ': ' + errText);
+    }
+    emailLog.unshift({ id:uid(), type, subject, ts:new Date() });
+    document.getElementById('log-pip').style.display = 'block';
+    renderLog();
+    return true;
+  } catch(e) {
+    const errMsg = e?.message || String(e) || 'Unknown error';
+    emailLog.unshift({ id:uid(), type:'error', subject:'FAILED - ' + errMsg, ts:new Date() });
+    document.getElementById('log-pip').style.display = 'block';
+    renderLog();
+    return false;
+  }
+}
+
+// ── EMAIL HTML BUILDERS ──────────────────────────────
+
+function statusBadgeHtml(s) {
+  const styles = {
+    overdue:   'background:#FDF0EE;color:#C1392B;border:1px solid #F4C4BD',
+    'due-today':'background:#FDF5E6;color:#B7670A;border:1px solid #F2D48A',
+    'due-soon': 'background:#EBF2FB;color:#1A5FA8;border:1px solid #AECBEE',
+    pending:   'background:#F0EEE9;color:#6B6960;border:1px solid #ddd',
+    done:      'background:#EAF5EE;color:#2A6E3F;border:1px solid #9ED4B2',
+  };
+  const labels = {overdue:'Overdue','due-today':'Due today','due-soon':'Due soon',pending:'Pending',done:'Done'};
+  const st = styles[s]||styles.pending;
+  return `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;${st}">${labels[s]||s}</span>`;
+}
+
+function buildEmployeeTableHtml(employeeName, taskList) {
+  const rows = taskList.map(t => {
+    const s = getStatus(t);
+    const ov = overdueStr(t);
+    const rowBg = s==='overdue' ? '#FFF8F8' : s==='due-today' ? '#FFFBF2' : '#FFFFFF';
+    return `<tr style="background:${rowBg}">
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#1A1916;line-height:1.4">${t.details}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#6B6960;white-space:nowrap">${t.assignedBy||'—'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#6B6960;white-space:nowrap">${fmtDate(t.assignedDate)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#6B6960;white-space:nowrap">${fmtDate(t.dueDate)}${t.dueTime?'<br><span style=\'font-size:11px\'>'+fmtTime(t.dueTime)+'</span>':''}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;text-align:center">${statusBadgeHtml(s)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:12px;color:#C1392B;font-weight:600;white-space:nowrap;font-family:monospace">${ov||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+<div style="margin-bottom:28px">
+  <div style="background:#1A1916;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;font-family:Arial,sans-serif">
+    ${employeeName}
+    <span style="font-weight:400;font-size:12px;opacity:0.7;margin-left:8px">${taskList.length} task${taskList.length>1?'s':''}</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #EEEBE4;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;font-family:Arial,sans-serif">
+    <thead>
+      <tr style="background:#F7F6F2">
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4">Task</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Assigned by</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Assigned date</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Due</th>
+        <th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4">Status</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Overdue by</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>`;
+}
+
+function buildDigestHtml(overdue, dueToday) {
+  const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const allTasks = [...overdue, ...dueToday];
+
+  // Group by employee
+  const byEmployee = {};
+  allTasks.forEach(t => {
+    const name = t.assignedTo || 'Unassigned';
+    if (!byEmployee[name]) byEmployee[name] = [];
+    byEmployee[name].push(t);
+  });
+
+  // Sort each employee's tasks: overdue first, then due-today
+  const ord = {overdue:0,'due-today':1,'due-soon':2,pending:3,done:4};
+  Object.keys(byEmployee).forEach(name => {
+    byEmployee[name].sort((a,b) => (ord[getStatus(a)]||3)-(ord[getStatus(b)]||3));
+  });
+
+  const employeeTables = Object.keys(byEmployee).sort().map(name =>
+    buildEmployeeTableHtml(name, byEmployee[name])
+  ).join('');
+
+  return `<div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;color:#1A1916">
+  <div style="margin-bottom:24px">
+    <h2 style="font-size:18px;font-weight:600;margin:0 0 4px">Daily Task Digest</h2>
+    <p style="font-size:13px;color:#6B6960;margin:0">${dateStr} &nbsp;·&nbsp; ${overdue.length} overdue &nbsp;·&nbsp; ${dueToday.length} due today</p>
+  </div>
+  <p style="font-size:14px;color:#1A1916;margin-bottom:20px">Hi ${cfg.name||'there'}, here is your morning summary. Tasks are grouped by employee — copy each table to follow up individually.</p>
+  ${employeeTables}
+  <p style="font-size:12px;color:#9E9B93;margin-top:16px;border-top:1px solid #EEEBE4;padding-top:12px">Sent by Task Tracker &nbsp;·&nbsp; ${new Date().toLocaleString('en-GB')}</p>
+</div>`;
+}
+
+function buildInstantHtml(t) {
+  const s = getStatus(t);
+  const ov = overdueStr(t);
+  return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1A1916">
+  <p style="font-size:14px;margin-bottom:20px">Hi ${cfg.name||'there'}, the following task just passed its due time:</p>
+  ${buildEmployeeTableHtml(t.assignedTo||'Unassigned', [t])}
+  <p style="font-size:13px;color:#6B6960;margin-top:8px">Please follow up with <strong>${t.assignedTo||'the assignee'}</strong> to understand the delay.</p>
+  <p style="font-size:12px;color:#9E9B93;margin-top:16px;border-top:1px solid #EEEBE4;padding-top:12px">Sent by Task Tracker &nbsp;·&nbsp; ${new Date().toLocaleString('en-GB')}</p>
+</div>`;
+}
+
+// Instant alert — fires exactly when a task hits its due time
+function scheduleInstantAlert(t) {
+  if (overdueTimers[t.id]) clearTimeout(overdueTimers[t.id]);
+  if (t.done || !t.dueDate) return;
+  const due = dueDateTime(t), diff = due - new Date();
+  if (diff <= 0) return;
+  overdueTimers[t.id] = setTimeout(async () => {
+    const subject = `⚠ Task now overdue — ${t.assignedTo||'Unassigned'}: ${t.details.slice(0,50)}`;
+    await sendEmail(subject, buildInstantHtml(t), 'instant');
+    render();
+  }, diff);
+}
+
+// Morning digest — one email, tasks grouped by employee as tables
+async function sendMorningDigest() {
+  const overdue  = tasks.filter(t => !t.done && t.dueDate && getStatus(t)==='overdue');
+  const dueToday = tasks.filter(t => !t.done && t.dueDate && getStatus(t)==='due-today');
+  if (!overdue.length && !dueToday.length) {
+    localStorage.setItem(DIGEST_KEY, today());
+    return;
+  }
+  const subject = `📋 Daily digest — ${overdue.length} overdue, ${dueToday.length} due today`;
+  await sendEmail(subject, buildDigestHtml(overdue, dueToday), 'digest');
+  localStorage.setItem(DIGEST_KEY, today());
+}
+
+// Schedule next digest
+function scheduleDigest() {
+  if (digestTimer) clearTimeout(digestTimer);
+  const now = new Date();
+  const [dh,dm] = (cfg.digestTime||'08:00').split(':').map(Number);
+  const next = new Date(); next.setHours(dh,dm,0,0);
+  if (next <= now) next.setDate(next.getDate()+1);
+  digestTimer = setTimeout(async () => { await sendMorningDigest(); scheduleDigest(); }, next-now);
+}
+
+// On load: if digest time has passed today and we haven't sent it, send now
+function checkMissedDigest() {
+  const last = localStorage.getItem(DIGEST_KEY)||'';
+  if (last === today()) return; // already sent today
+  const now = new Date();
+  const [dh,dm] = (cfg.digestTime||'08:00').split(':').map(Number);
+  const digestTime = new Date(); digestTime.setHours(dh,dm,0,0);
+  if (now >= digestTime) sendMorningDigest();
+}
+
+// ── SETTINGS UI ──────────────────────────────────────
+function openSettings() {
+  document.getElementById('s-email').value = cfg.email||'';
+  document.getElementById('s-name').value = cfg.name||'';
+  document.getElementById('s-pubkey').value = cfg.pubkey||'';
+  document.getElementById('s-service').value = cfg.service||'';
+  document.getElementById('s-template').value = cfg.template||'';
+  document.getElementById('s-digest-time').value = cfg.digestTime||'08:00';
+  const tzSel = document.getElementById('s-timezone');
+  if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
+  const backendEl = document.getElementById('s-backend');
+  if (backendEl) backendEl.value = cfg.backendUrl||'';
+  const adminPinEl = document.getElementById('s-admin-pin');
+  if (adminPinEl) adminPinEl.value = cfg.adminPin||'';
+  const editorPinEl = document.getElementById('s-editor-pin');
+  if (editorPinEl) editorPinEl.value = cfg.editorPin||'';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+function saveSettings() {
+  cfg.email = document.getElementById('s-email').value.trim();
+  cfg.name = document.getElementById('s-name').value.trim();
+  cfg.pubkey = document.getElementById('s-pubkey').value.trim();
+  cfg.service = document.getElementById('s-service').value.trim();
+  cfg.template = document.getElementById('s-template').value.trim();
+  cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
+  cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
+  cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
+  const newAdminPin = (document.getElementById('s-admin-pin')||{}).value?.trim();
+  const newEditorPin = (document.getElementById('s-editor-pin')||{}).value?.trim();
+  if (newAdminPin) cfg.adminPin = newAdminPin;
+  if (newEditorPin) cfg.editorPin = newEditorPin;
+  saveCfg();
+  pushConfigToBackend();
+  pushToBackend();
+  closeSettings();
+  renderSetupBanner();
+  render();
+}
+async function sendTestEmail() {
+  cfg.email = document.getElementById('s-email').value.trim();
+  cfg.name = document.getElementById('s-name').value.trim();
+  cfg.pubkey = document.getElementById('s-pubkey').value.trim();
+  cfg.service = document.getElementById('s-service').value.trim();
+  cfg.template = document.getElementById('s-template').value.trim();
+  if (!emailReady()) { alert('Please fill in all four EmailJS fields first.'); return; }
+  const btn = document.getElementById('test-btn');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  const ok = await sendEmail(
+    '✅ Task Tracker — test email',
+    `Hi ${cfg.name||'there'},\n\nYour email reminders are working.\n\nYou will receive:\n• One morning digest at ${cfg.digestTime} covering all overdue and due-today tasks\n• An instant alert the moment any task hits its due time\n\n— Task Tracker`,
+    'test'
+  );
+  btn.textContent = ok ? '✓ Sent!' : '✗ Failed — check keys';
+  btn.disabled = false;
+  setTimeout(()=>{ btn.textContent='Send test email'; },3000);
+}
+
+// ── TASK MODAL ───────────────────────────────────────
+function openAddTask() {
+  editId = null;
+  document.getElementById('task-modal-title').textContent = 'Add new task';
+  ['f-details','f-to','f-by','f-ddate','f-dtime'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-adate').value = today();
+  document.getElementById('task-modal').classList.add('open');
+}
+function openEditTask(id) {
+  editId = id;
+  const t = tasks.find(x=>x.id===id);
+  document.getElementById('task-modal-title').textContent = 'Edit task';
+  document.getElementById('f-details').value = t.details||'';
+  document.getElementById('f-to').value = t.assignedTo||'';
+  document.getElementById('f-by').value = t.assignedBy||'';
+  document.getElementById('f-adate').value = t.assignedDate||today();
+  document.getElementById('f-ddate').value = t.dueDate||'';
+  document.getElementById('f-dtime').value = t.dueTime||'';
+  document.getElementById('task-modal').classList.add('open');
+}
+function closeTaskModal() { document.getElementById('task-modal').classList.remove('open'); }
+function saveTask() {
+  const details = document.getElementById('f-details').value.trim();
+  if (!details) { alert('Please enter task details.'); return; }
+  const t = {
+    id: editId||uid(), details,
+    assignedTo: document.getElementById('f-to').value.trim(),
+    assignedBy: document.getElementById('f-by').value.trim(),
+    assignedDate: document.getElementById('f-adate').value,
+    dueDate: document.getElementById('f-ddate').value,
+    dueTime: document.getElementById('f-dtime').value,
+    done: editId ? (tasks.find(x=>x.id===editId)||{}).done||false : false,
+  };
+  tasks = editId ? tasks.map(x=>x.id===editId?t:x) : [t,...tasks];
+  scheduleInstantAlert(t);
+  saveTasks(); closeTaskModal(); render();
+}
+function markDone(id) {
+  tasks = tasks.map(t=>t.id===id?{...t,done:true}:t);
+  if (overdueTimers[id]) { clearTimeout(overdueTimers[id]); delete overdueTimers[id]; }
+  saveTasks(); render();
+}
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  tasks = tasks.filter(t=>t.id!==id);
+  if (overdueTimers[id]) { clearTimeout(overdueTimers[id]); delete overdueTimers[id]; }
+  saveTasks(); render();
+}
+function closeBg(e,id) { if(e.target.id===id) document.getElementById(id).classList.remove('open'); }
+
+// ── VIEWS ─────────────────────────────────────────────
+function showView(v,btn) {
+  document.getElementById('view-tasks').style.display = v==='tasks'?'':'none';
+  document.getElementById('view-log').style.display   = v==='log'?'':'none';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(v==='log') { document.getElementById('log-pip').style.display='none'; renderLog(); }
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderSetupBanner() {
+  const area = document.getElementById('setup-area');
+  if (emailReady()) {
+    const backendStatus = cfg.backendUrl
+      ? `&nbsp;·&nbsp; <span style="color:var(--green)">⬡ Backend active</span>`
+      : `&nbsp;·&nbsp; <span style="color:var(--amber)">⚠ No backend — <button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">add Railway URL</button></span>`;
+    area.innerHTML = `<div class="email-status-bar">✓ Email reminders active &nbsp;·&nbsp; Digest at <strong>${cfg.digestTime}</strong>${backendStatus} &nbsp;·&nbsp; <span style="color:var(--text-muted)">${cfg.email}</span> &nbsp;<button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">Change</button></div>`;
+  } else {
+    area.innerHTML = `<div class="setup-banner"><div class="setup-banner-text"><strong>Set up email reminders</strong> — one morning digest of all due &amp; overdue tasks, plus instant alerts when deadlines pass.</div><button class="btn-configure" onclick="openSettings()">Configure →</button></div>`;
+  }
+}
+
+function render() {
+  const q  = document.getElementById('search-input')?.value?.toLowerCase()||'';
+  const fs = document.getElementById('filter-status')?.value||'';
+  const fa = document.getElementById('filter-assignee')?.value||'';
+
+  const assignees = [...new Set(tasks.map(t=>t.assignedTo).filter(Boolean))];
+  const sel = document.getElementById('filter-assignee');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">All assignees</option>'+assignees.map(a=>`<option${prev===a?' selected':''}>${a}</option>`).join('');
+
+  const counts = {overdue:0,'due-today':0,'due-soon':0,pending:0,done:0};
+  tasks.forEach(t=>{ const s=getStatus(t); if(s in counts) counts[s]++; });
+
+  document.getElementById('stats-row').innerHTML = [
+    ['Overdue',counts.overdue,'red'],
+    ['Due today',counts['due-today'],'amber'],
+    ['Due soon',counts['due-soon'],'blue'],
+    ['Pending',counts.pending,''],
+    ['Done',counts.done,'green'],
+  ].map(([l,v,c])=>`<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-val${c?' '+c:''}">${v}</div></div>`).join('');
+
+  const alerts=[];
+  tasks.filter(t=>!t.done&&t.dueDate).forEach(t=>{
+    const s=getStatus(t);
+    if(s==='overdue')    alerts.push(`<div class="alert danger"><span>⚠</span><div><strong>${esc(t.assignedTo||'Unassigned')}</strong> — ${esc(t.details.slice(0,65))}${t.details.length>65?'…':''} &nbsp;·&nbsp; ${overdueStr(t)}</div></div>`);
+    else if(s==='due-today') alerts.push(`<div class="alert warn"><span>◷</span><div><strong>${esc(t.assignedTo||'Unassigned')}</strong> — ${esc(t.details.slice(0,65))}${t.details.length>65?'…':''} due today${t.dueTime?' at '+fmtTime(t.dueTime):''}</div></div>`);
+  });
+  document.getElementById('alerts-area').innerHTML = alerts.length?`<div class="alerts">${alerts.slice(0,4).join('')}</div>`:'';
+
+  let filtered = tasks.filter(t=>{
+    const s=getStatus(t);
+    if(fs&&s!==fs) return false;
+    if(fa&&t.assignedTo!==fa) return false;
+    if(q){ const h=[t.details,t.assignedTo,t.assignedBy].join(' ').toLowerCase(); if(!h.includes(q)) return false; }
+    return true;
+  });
+  const ord={overdue:0,'due-today':1,'due-soon':2,pending:3,done:4};
+  filtered.sort((a,b)=>(ord[getStatus(a)]||3)-(ord[getStatus(b)]||3));
+
+  const list=document.getElementById('task-list');
+  if(!filtered.length){ list.innerHTML='<div class="empty-state">No tasks found.<p>Add a task using the button above.</p></div>'; return; }
+
+  list.innerHTML=filtered.map(t=>{
+    const s=getStatus(t),ov=overdueStr(t);
+    return `<div class="task-card ${s}">
+      <div class="tc-header">
+        <div class="tc-title">${esc(t.details)}</div>
+        <span class="badge ${s}">${statusLabel(s)}</span>
+      </div>
+      <div class="tc-meta">
+        ${t.assignedTo?`<span>→ To: ${esc(t.assignedTo)}</span>`:''}
+        ${t.assignedBy?`<span>↑ By: ${esc(t.assignedBy)}</span>`:''}
+        ${t.assignedDate?`<span>📅 ${fmtDate(t.assignedDate)}</span>`:''}
+        ${t.dueDate?`<span>⏰ Due: ${fmtDate(t.dueDate)}${t.dueTime?' · '+fmtTime(t.dueTime):' · End of day'}</span>`:''}
+      </div>
+      ${ov?`<div class="tc-overdue">${ov}</div>`:''}
+      <div class="tc-footer">
+        ${!t.done?`<button class="act-btn done-btn" onclick="markDone('${t.id}')">✓ Mark done</button>`:''}
+        <button class="act-btn" onclick="openEditTask('${t.id}')">Edit</button>
+        ${isAdmin()?`<button class="act-btn del-btn" onclick="deleteTask('${t.id}')">Delete</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const area=document.getElementById('log-list-area');
+  if(!emailLog.length){ area.innerHTML='<div class="empty-state">No emails sent yet.<p>Configure email settings above, then emails will appear here.</p></div>'; return; }
+  area.innerHTML='<div class="log-list">'+emailLog.map(e=>{
+    const icons={digest:'📋',instant:'⚠',test:'✅',error:'✗'};
+    return `<div class="log-card">
+      <div class="log-card-top">
+        <div class="log-card-title">${icons[e.type]||'📧'} ${esc(e.subject)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="log-badge ${e.type}">${e.type}</span>
+          <span class="log-time">${e.ts.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${e.ts.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>
+        </div>
+      </div>
+      <div class="log-card-meta">Sent to: ${esc(cfg.email||'—')}</div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+// ── INIT ──────────────────────────────────────────────
+loadCfg(); loadTasks();
+
+// Tasks will be loaded from Railway backend
+
+// Fetch config + tasks from backend — always backend wins
+async function initFromBackend() {
+  if (!cfg.backendUrl) return;
+  try {
+    // Fetch tasks
+    const tRes = await fetch(cfg.backendUrl + '/tasks');
+    if (tRes.ok) {
+      const tData = await tRes.json();
+      if (Array.isArray(tData.tasks)) {
+        tasks = tData.tasks;
+      }
+    }
+    // Fetch config (pins, digest time etc)
+    const cRes = await fetch(cfg.backendUrl + '/config');
+    if (cRes.ok) {
+      const cData = await cRes.json();
+      // Merge backend config — backend is authoritative for pins and schedule
+      cfg = { ...cfg, ...cData };
+      saveCfg();
+    }
+  } catch(e) { console.warn('Could not reach backend on load:', e.message); }
+  render();
+}
+
+// Poll backend every 30 seconds so both users always see live tasks
+function startPolling() {
+  setInterval(async () => {
+    if (!cfg.backendUrl || !currentRole) return;
+    try {
+      const res = await fetch(cfg.backendUrl + '/tasks');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.tasks)) {
+          tasks = data.tasks;
+          if (document.getElementById('view-tasks').style.display !== 'none') render();
+        }
+      }
+    } catch(e) {}
+  }, 30000);
+}
+
+// On startup: fetch backend config first so PINs are always up to date
+async function startup() {
+  // Try to pull config from backend before showing login
+  if (cfg.backendUrl) {
+    try {
+      const cRes = await fetch(cfg.backendUrl + '/config');
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        cfg = { ...cfg, ...cData };
+        saveCfg();
+      }
+    } catch(e) { console.warn('Could not reach backend on startup:', e.message); }
+  }
+
+  const savedRole = sessionStorage.getItem('tt_role');
+  if (savedRole && (savedRole === 'admin' || savedRole === 'editor')) {
+    currentRole = savedRole;
+    showApp();
+  } else {
+    // Show login
+    if (!cfg.adminPin && !cfg.editorPin) {
+      document.getElementById('login-error').textContent = 'First run: enter any PIN to set up as Admin.';
+    }
+  }
+  startPolling();
+}
+startup();
+</script>
+</div><!-- end #app -->
+</body>
+</html>
