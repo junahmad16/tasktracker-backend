@@ -374,8 +374,8 @@ function showApp() {
     ? '<span class="role-badge admin">Admin</span>'
     : '<span class="role-badge editor">Editor</span>';
   renderSetupBanner();
-  render(); // render with local data immediately
-  initFromBackend().then(() => render()); // then re-render with fresh backend data
+  // Don't render from localStorage — always wait for backend first
+  initFromBackend().then(() => render());
 }
 
 function isAdmin() { return currentRole === 'admin'; }
@@ -392,9 +392,9 @@ function loadCfg() {
   }
 }
 function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
-function loadTasks() { try { const s=localStorage.getItem(TASKS_KEY); if(s) tasks=JSON.parse(s); } catch(e){} }
+function loadTasks() { tasks = []; /* Always load from backend, not localStorage */ }
 function saveTasks() {
-  try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch(e){}
+  // Don't persist to localStorage — backend is single source of truth
   pushToBackend();
 }
 async function pushToBackend() {
@@ -887,10 +887,13 @@ loadCfg(); loadTasks();
 
 // Fetch config + tasks from backend — always backend wins
 async function initFromBackend() {
-  if (!cfg.backendUrl) return;
+  // Always resolve backend URL
+  const backendUrl = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
+  if (!backendUrl) return;
+  cfg.backendUrl = backendUrl;
   try {
-    // Fetch tasks
-    const tRes = await fetch(cfg.backendUrl + '/tasks');
+    // Fetch tasks — backend is always authoritative, overwrite local
+    const tRes = await fetch(backendUrl + '/tasks');
     if (tRes.ok) {
       const tData = await tRes.json();
       if (Array.isArray(tData.tasks)) {
@@ -898,7 +901,7 @@ async function initFromBackend() {
       }
     }
     // Fetch config (pins, digest time etc)
-    const cRes = await fetch(cfg.backendUrl + '/config');
+    const cRes = await fetch(backendUrl + '/config');
     if (cRes.ok) {
       const cData = await cRes.json();
       // Merge: backend wins for pins/schedule, keep local email keys if backend has none
@@ -948,7 +951,7 @@ async function startup() {
   // Try to pull config from backend before showing login
   if (cfg.backendUrl) {
     try {
-      const cRes = await fetch(cfg.backendUrl + '/config');
+      const cRes = await fetch(backendUrl + '/config');
       if (cRes.ok) {
         const cData = await cRes.json();
         cfg = { ...cfg, ...cData };
