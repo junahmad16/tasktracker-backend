@@ -398,6 +398,10 @@ function saveTasks() {
   pushToBackend();
 }
 async function pushToBackend() {
+  if (!cfg.backendUrl && window.location.protocol !== 'file:') {
+    cfg.backendUrl = window.location.origin;
+    saveCfg();
+  }
   if (!cfg.backendUrl) { console.warn('No backendUrl set'); return; }
   try {
     const res = await fetch(cfg.backendUrl + '/tasks', {
@@ -782,7 +786,8 @@ function showView(v,btn) {
 function renderSetupBanner() {
   const area = document.getElementById('setup-area');
   if (emailReady()) {
-    const backendStatus = cfg.backendUrl
+    const effectiveBackend = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
+    const backendStatus = effectiveBackend
       ? `&nbsp;·&nbsp; <span style="color:var(--green)">⬡ Backend active</span>`
       : `&nbsp;·&nbsp; <span style="color:var(--amber)">⚠ No backend — <button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">add Railway URL</button></span>`;
     area.innerHTML = `<div class="email-status-bar">✓ Email reminders active &nbsp;·&nbsp; Digest at <strong>${cfg.digestTime}</strong>${backendStatus} &nbsp;·&nbsp; <span style="color:var(--text-muted)">${cfg.email}</span> &nbsp;<button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">Change</button></div>`;
