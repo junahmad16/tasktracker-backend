@@ -384,9 +384,11 @@ let tasks = [], editId = null, overdueTimers = {}, digestTimer = null, emailLog 
 
 function loadCfg() {
   try { const s=localStorage.getItem(CFG_KEY); if(s) cfg={...cfg,...JSON.parse(s)}; } catch(e){}
-  // When served from Railway, always use current origin — ignore any stored backendUrl
-  if (window.location.protocol !== 'file:') {
-    cfg.backendUrl = window.location.origin;
+  // Always set backendUrl to current origin — works whether on Railway or file://
+  const origin = window.location.origin;
+  if (origin && origin !== 'null' && !origin.startsWith('file:')) {
+    cfg.backendUrl = origin;
+    saveCfg();
   }
 }
 function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
@@ -920,6 +922,12 @@ function startPolling() {
 
 // On startup: fetch backend config first so PINs are always up to date
 async function startup() {
+  // Force set backendUrl from current origin on every startup
+  const origin = window.location.origin;
+  if (origin && origin !== 'null' && !origin.startsWith('file:')) {
+    cfg.backendUrl = origin;
+    saveCfg();
+  }
   // Try to pull config from backend before showing login
   if (cfg.backendUrl) {
     try {
