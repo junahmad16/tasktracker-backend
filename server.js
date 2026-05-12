@@ -294,15 +294,19 @@ app.get('/tasks', (req, res) => {
   res.json({ tasks });
 });
 
-// Return full cfg needed by clients (pins, digest time, timezone, name — NOT emailjs keys)
+// Return full config — backend is single source of truth
 app.get('/config', (req, res) => {
   res.json({
     digestTime: cfg.digestTime,
-    timezone: cfg.timezone,
-    name: cfg.name,
-    adminPin: cfg.adminPin,
-    editorPin: cfg.editorPin,
-    backendUrl: cfg.backendUrl
+    timezone:   cfg.timezone,
+    name:       cfg.name,
+    adminPin:   cfg.adminPin,
+    editorPin:  cfg.editorPin,
+    backendUrl: cfg.backendUrl,
+    email:      cfg.email,
+    pubkey:     cfg.pubkey,
+    service:    cfg.service,
+    template:   cfg.template,
   });
 });
 
