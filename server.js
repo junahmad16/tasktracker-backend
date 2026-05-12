@@ -1,13 +1,39 @@
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
+// Serve the tracker HTML directly — so it runs on https:// not file://
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── FILE PERSISTENCE ──────────────────────────────────
+// Saves to disk so data survives Railway restarts
+const DATA_FILE = path.join('/tmp', 'tasktracker_data.json');
+
+function loadFromDisk() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const data = JSON.parse(raw);
+      if (data.tasks) tasks = data.tasks;
+      if (data.cfg) cfg = { ...cfg, ...data.cfg };
+      console.log('Loaded from disk:', tasks.length, 'tasks');
+    }
+  } catch(e) { console.error('Error loading from disk:', e.message); }
+}
+
+function saveToDisk() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ tasks, cfg }), 'utf8');
+  } catch(e) { console.error('Error saving to disk:', e.message); }
+}
+
 // ── IN-MEMORY STORE ───────────────────────────────────
-// Tasks and config are pushed from the tracker whenever they change.
 let tasks = [];
 let cfg = {
   email: '',
@@ -16,10 +42,16 @@ let cfg = {
   template: '',
   digestTime: '08:00',
   name: '',
-  timezone: 'Asia/Riyadh'
+  timezone: 'Asia/Riyadh',
+  adminPin: '',
+  editorPin: '',
+  backendUrl: ''
 };
-let overdueTimers = {};   // taskId -> setTimeout handle
+let overdueTimers = {};
 let digestCronJob = null;
+
+// Load persisted data immediately on startup
+loadFromDisk();
 
 // ── HELPERS ───────────────────────────────────────────
 function dueDateTime(t) {
@@ -242,6 +274,7 @@ app.get('/', (req, res) => {
 app.post('/tasks', (req, res) => {
   tasks = req.body.tasks || [];
   console.log(`Tasks updated: ${tasks.length} tasks received`);
+  saveToDisk();
   scheduleAllInstantAlerts();
   res.json({ ok: true, count: tasks.length });
 });
@@ -250,6 +283,7 @@ app.post('/tasks', (req, res) => {
 app.post('/config', (req, res) => {
   cfg = { ...cfg, ...req.body };
   console.log(`Config updated: digest at ${cfg.digestTime}, email: ${cfg.email}`);
+  saveToDisk();
   startDigestCron();
   scheduleAllInstantAlerts();
   res.json({ ok: true });
