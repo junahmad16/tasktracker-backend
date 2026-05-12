@@ -268,7 +268,7 @@
         </select>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="backend-url-field">
       <label>Backend URL <span style="color:var(--text-hint);font-weight:400">(paste your Railway URL here)</span></label>
       <input type="url" id="s-backend" placeholder="https://your-app.railway.app">
       <div class="hint">Once set, reminders fire 24/7 even with this tab closed</div>
@@ -384,12 +384,7 @@ let tasks = [], editId = null, overdueTimers = {}, digestTimer = null, emailLog 
 
 function loadCfg() {
   try { const s=localStorage.getItem(CFG_KEY); if(s) cfg={...cfg,...JSON.parse(s)}; } catch(e){}
-  // Auto-detect backend URL if served from Railway (not file://)
-  if (window.location.protocol !== 'file:' && !cfg.backendUrl) {
-    cfg.backendUrl = window.location.origin;
-    saveCfg();
-  }
-  // Always use current origin if served from Railway
+  // When served from Railway, always use current origin — ignore any stored backendUrl
   if (window.location.protocol !== 'file:') {
     cfg.backendUrl = window.location.origin;
   }
@@ -670,6 +665,9 @@ function openSettings() {
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
   const backendEl = document.getElementById('s-backend');
   if (backendEl) backendEl.value = cfg.backendUrl||'';
+  // Hide backend URL field when already running on Railway
+  const backendField = document.getElementById('backend-url-field');
+  if (backendField) backendField.style.display = window.location.protocol !== 'file:' ? 'none' : '';
   const adminPinEl = document.getElementById('s-admin-pin');
   if (adminPinEl) adminPinEl.value = cfg.adminPin||'';
   const editorPinEl = document.getElementById('s-editor-pin');
@@ -684,7 +682,10 @@ function saveSettings() {
   cfg.service = document.getElementById('s-service').value.trim();
   cfg.template = document.getElementById('s-template').value.trim();
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
-  cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
+  // Only use manual backend URL if running from file://
+  if (window.location.protocol === 'file:') {
+    cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
+  }
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
   const newAdminPin = (document.getElementById('s-admin-pin')||{}).value?.trim();
   const newEditorPin = (document.getElementById('s-editor-pin')||{}).value?.trim();
