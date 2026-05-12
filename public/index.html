@@ -423,9 +423,10 @@ async function pushToBackend() {
   }
 }
 async function pushConfigToBackend() {
-  if (!cfg.backendUrl) return;
+  const url = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
+  if (!url) return;
   try {
-    const res = await fetch(cfg.backendUrl + '/config', {
+    const res = await fetch(url + '/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg)
@@ -434,7 +435,7 @@ async function pushConfigToBackend() {
       const txt = await res.text();
       console.error('pushConfigToBackend failed:', res.status, txt);
     } else {
-      console.log('Config pushed to backend OK');
+      console.log('Config pushed to backend OK:', cfg.name, cfg.email);
     }
   } catch(e) { console.error('pushConfigToBackend error:', e.message); }
 }
@@ -681,7 +682,7 @@ function openSettings() {
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
-function saveSettings() {
+async function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
   cfg.pubkey = document.getElementById('s-pubkey').value.trim();
@@ -698,7 +699,7 @@ function saveSettings() {
   if (newAdminPin) cfg.adminPin = newAdminPin;
   if (newEditorPin) cfg.editorPin = newEditorPin;
   saveCfg();
-  pushConfigToBackend();
+  await pushConfigToBackend();
   pushToBackend();
   closeSettings();
   renderSetupBanner();
@@ -900,8 +901,19 @@ async function initFromBackend() {
     const cRes = await fetch(cfg.backendUrl + '/config');
     if (cRes.ok) {
       const cData = await cRes.json();
-      // Merge backend config — backend is authoritative for pins and schedule
-      cfg = { ...cfg, ...cData };
+      // Merge: backend wins for pins/schedule, keep local email keys if backend has none
+      cfg = {
+        ...cfg,
+        ...cData,
+        // Keep local email keys if backend doesn't have them
+        email:    cData.email    || cfg.email,
+        pubkey:   cData.pubkey   || cfg.pubkey,
+        service:  cData.service  || cfg.service,
+        template: cData.template || cfg.template,
+        name:     cData.name     || cfg.name,
+        adminPin: cData.adminPin || cfg.adminPin,
+        editorPin:cData.editorPin|| cfg.editorPin,
+      };
       saveCfg();
     }
   } catch(e) { console.warn('Could not reach backend on load:', e.message); }
