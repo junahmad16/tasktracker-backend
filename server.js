@@ -260,12 +260,15 @@ app.get('/tasks', (req, res) => {
   res.json({ tasks });
 });
 
-// Return non-sensitive config (backendUrl, digestTime, timezone, name — NOT pins or email keys)
+// Return full cfg needed by clients (pins, digest time, timezone, name — NOT emailjs keys)
 app.get('/config', (req, res) => {
   res.json({
     digestTime: cfg.digestTime,
     timezone: cfg.timezone,
-    name: cfg.name
+    name: cfg.name,
+    adminPin: cfg.adminPin,
+    editorPin: cfg.editorPin,
+    backendUrl: cfg.backendUrl
   });
 });
 
