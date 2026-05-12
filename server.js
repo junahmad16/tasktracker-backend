@@ -315,6 +315,12 @@ app.post('/test-digest', async (req, res) => {
   res.json({ ok });
 });
 
+// Catch-all for unknown routes — helps debug 404s
+app.use((req, res) => {
+  console.log('404 Not Found:', req.method, req.url);
+  res.status(404).json({ error: 'Not found', path: req.url });
+});
+
 // ── START ─────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
