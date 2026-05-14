@@ -45,13 +45,20 @@ let cfg = {
   timezone: 'Asia/Riyadh',
   adminPin: '',
   editorPin: '',
-  backendUrl: ''
+  backendUrl: '',
+  cc: ''
 };
 let overdueTimers = {};
 let digestCronJob = null;
 
 // Load persisted data immediately on startup
 loadFromDisk();
+// If we have config from disk, start cron immediately
+if (cfg.email && cfg.digestTime) {
+  console.log('Config loaded from disk, starting cron for', cfg.digestTime);
+  startDigestCron();
+  scheduleAllInstantAlerts();
+}
 
 // ── HELPERS ───────────────────────────────────────────
 function dueDateTime(t) {
@@ -107,7 +114,12 @@ async function sendEmail(subject, message, type) {
       service_id: cfg.service,
       template_id: cfg.template,
       user_id: cfg.pubkey,
-      template_params: { to_email: cfg.email, subject, message }
+      template_params: {
+        to_email: cfg.email,
+        subject,
+        message,
+        cc_email: cfg.cc || ''
+      }
     };
     const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
       method: 'POST',
@@ -240,6 +252,10 @@ function scheduleAllInstantAlerts() {
 
 function startDigestCron() {
   if (digestCronJob) digestCronJob.stop();
+  if (!cfg.email || !cfg.pubkey) {
+    console.log('Email not configured yet — cron will start once config is received');
+    return;
+  }
   const [h, m] = (cfg.digestTime || '08:00').split(':');
   // cron format: minute hour * * *
   const cronExpr = `${parseInt(m)} ${parseInt(h)} * * *`;
@@ -307,6 +323,7 @@ app.get('/config', (req, res) => {
     pubkey:     cfg.pubkey,
     service:    cfg.service,
     template:   cfg.template,
+    cc:         cfg.cc,
   });
 });
 
