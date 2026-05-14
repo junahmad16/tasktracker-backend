@@ -233,6 +233,10 @@
       <input type="email" id="s-email" placeholder="you@company.com">
     </div>
     <div class="field">
+      <label>CC email address <span style="color:var(--text-hint);font-weight:400">(optional — receives all reminders)</span></label>
+      <input type="email" id="s-cc" placeholder="colleague@company.com">
+    </div>
+    <div class="field">
       <label>Your name</label>
       <input type="text" id="s-name" placeholder="e.g. Sara">
     </div>
@@ -328,7 +332,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'' };
+  adminPin:'', editorPin:'', cc:'' };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -664,6 +668,7 @@ function checkMissedDigest() {
 function openSettings() {
   document.getElementById('s-email').value = cfg.email||'';
   document.getElementById('s-name').value = cfg.name||'';
+  const ccEl = document.getElementById('s-cc'); if(ccEl) ccEl.value = cfg.cc||'';
   document.getElementById('s-pubkey').value = cfg.pubkey||'';
   document.getElementById('s-service').value = cfg.service||'';
   document.getElementById('s-template').value = cfg.template||'';
@@ -685,6 +690,7 @@ function closeSettings() { document.getElementById('settings-modal').classList.r
 async function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
+  cfg.cc = (document.getElementById('s-cc')||{}).value?.trim()||'';
   cfg.pubkey = document.getElementById('s-pubkey').value.trim();
   cfg.service = document.getElementById('s-service').value.trim();
   cfg.template = document.getElementById('s-template').value.trim();
@@ -708,6 +714,7 @@ async function saveSettings() {
 async function sendTestEmail() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
+  cfg.cc = (document.getElementById('s-cc')||{}).value?.trim()||'';
   cfg.pubkey = document.getElementById('s-pubkey').value.trim();
   cfg.service = document.getElementById('s-service').value.trim();
   cfg.template = document.getElementById('s-template').value.trim();
@@ -942,11 +949,10 @@ function startPolling() {
 
 // On startup: fetch backend config first so PINs are always up to date
 async function startup() {
-  // Force set backendUrl from current origin on every startup
+  // Always set backendUrl from current origin first — before loading anything
   const origin = window.location.origin;
   if (origin && origin !== 'null' && !origin.startsWith('file:')) {
     cfg.backendUrl = origin;
-    saveCfg();
   }
   // Try to pull config from backend before showing login
   if (cfg.backendUrl) {
