@@ -47,7 +47,7 @@ let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
   timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:'',
-  smtpUser:'', smtpPass:''
+  smtpUser:'', smtpPass:'', privateKey:''
 };
 let overdueTimers = {};
 let digestCronJob = null;
@@ -89,39 +89,37 @@ function fmtTime(t) {
   const [h,m]=t.split(':');
   return `${+h%12||12}:${m} ${+h>=12?'PM':'AM'}`;
 }
-// ── EMAIL ─────────────────────────────────────────────
-const nodemailer = require('nodemailer');
-
-function createTransporter() {
-  if (!cfg.smtpUser || !cfg.smtpPass) return null;
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-  });
-}
-
-function emailReady() { return !!(cfg.email && cfg.smtpUser && cfg.smtpPass); }
+// ── EMAIL via EmailJS REST API (works on Railway, no SMTP ports needed) ──
+function emailReady() { return !!(cfg.email && cfg.pubkey && cfg.service && cfg.template); }
 
 async function sendEmail(subject, message, type) {
   if (!emailReady()) { console.log('Email not configured'); return false; }
   try {
-    const transporter = createTransporter();
-    const mailOptions = {
-      from: `"Task Tracker" <${cfg.smtpUser}>`,
-      to: cfg.email,
-      cc: cfg.cc || undefined,
-      subject: subject,
-      html: message
+    const payload = {
+      service_id:  cfg.service,
+      template_id: cfg.template,
+      user_id:     cfg.pubkey,
+      accessToken: cfg.privateKey || undefined,
+      template_params: {
+        to_email: cfg.email,
+        subject:  subject,
+        message:  message,
+        cc_email: cfg.cc || ''
+      }
     };
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[${type}] Email sent OK: ${subject} — messageId: ${info.messageId}`);
+    console.log(`[${type}] Sending via EmailJS to ${cfg.email}...`);
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const responseText = await res.text();
+    console.log(`[${type}] EmailJS response: ${res.status} — ${responseText}`);
+    if (!res.ok) throw new Error(`${res.status}: ${responseText}`);
+    console.log(`[${type}] Email sent OK: ${subject}`);
     return true;
   } catch(e) {
     console.error(`[${type}] Email FAILED:`, e.message);
-    console.error(`[${type}] Error code:`, e.code);
-    console.error(`[${type}] SMTP response:`, e.response);
     return false;
   }
 }
@@ -254,7 +252,7 @@ app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
     adminPin:cfg.adminPin, editorPin:cfg.editorPin, backendUrl:cfg.backendUrl,
     email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
-    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass });
+    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey });
 });
 
 app.post('/config', async(req,res) => {
