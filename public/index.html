@@ -111,9 +111,9 @@
   .log-badge.test{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
   .log-badge.error{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
   /* MODALS */
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,12,.45);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 0;backdrop-filter:blur(2px)}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:center;justify-content:center;padding:1rem;overflow-y:auto}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-lg);padding:1.75rem;width:540px;max-width:95vw;max-height:85vh;overflow-y:auto;overflow-x:hidden;box-shadow:var(--shadow-md);animation:modalIn .18s ease}
+  .modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-lg);padding:1.5rem;width:520px;max-width:96vw;height:auto;max-height:92vh;overflow-y:auto;overflow-x:hidden;box-shadow:var(--shadow-md);animation:modalIn .18s ease;position:relative}
   .modal.narrow{width:520px}
   @keyframes modalIn{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:none}}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
