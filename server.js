@@ -94,16 +94,11 @@ const nodemailer = require('nodemailer');
 
 function createTransporter() {
   if (!cfg.smtpUser || !cfg.smtpPass) return null;
-  // Try port 465 (SSL) for better Railway compatibility
   return nodemailer.createTransport({
-    host: 'smtp.office365.com',
-    port: 587,
-    secure: false,
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-    tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
   });
 }
 
