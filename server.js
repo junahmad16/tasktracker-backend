@@ -94,12 +94,16 @@ const nodemailer = require('nodemailer');
 
 function createTransporter() {
   if (!cfg.smtpUser || !cfg.smtpPass) return null;
+  // Try port 465 (SSL) for better Railway compatibility
   return nodemailer.createTransport({
-    host: cfg.smtpHost || 'smtp.office365.com',
-    port: cfg.smtpPort || 587,
+    host: 'smtp.office365.com',
+    port: 587,
     secure: false,
     auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-    tls: { ciphers: 'SSLv3' }
+    tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 }
 
@@ -116,10 +120,15 @@ async function sendEmail(subject, message, type) {
       subject: subject,
       html: message
     };
-    await transporter.sendMail(mailOptions);
-    console.log(`[${type}] Email sent OK: ${subject}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[${type}] Email sent OK: ${subject} — messageId: ${info.messageId}`);
     return true;
-  } catch(e) { console.error(`[${type}] Email FAILED:`, e.message); return false; }
+  } catch(e) {
+    console.error(`[${type}] Email FAILED:`, e.message);
+    console.error(`[${type}] Error code:`, e.code);
+    console.error(`[${type}] SMTP response:`, e.response);
+    return false;
+  }
 }
 
 // ── HTML BUILDERS ─────────────────────────────────────
