@@ -47,7 +47,7 @@ let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
   timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:'',
-  smtpUser:'', smtpPass:'', smtpHost:'smtp.office365.com', smtpPort:587
+  smtpUser:'', smtpPass:''
 };
 let overdueTimers = {};
 let digestCronJob = null;
@@ -254,7 +254,7 @@ app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
     adminPin:cfg.adminPin, editorPin:cfg.editorPin, backendUrl:cfg.backendUrl,
     email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
-    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, smtpHost:cfg.smtpHost, smtpPort:cfg.smtpPort });
+    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass });
 });
 
 app.post('/config', async(req,res) => {
