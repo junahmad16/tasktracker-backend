@@ -669,8 +669,9 @@ function checkMissedDigest() {
 function openSettings() {
   document.getElementById('s-email').value = cfg.email||'';
   document.getElementById('s-name').value = cfg.name||'';
+  const ccEl2 = document.getElementById('s-cc'); if(ccEl2) ccEl2.value = cfg.cc||'';
   const smtpU = document.getElementById('s-smtp-user'); if(smtpU) smtpU.value = cfg.smtpUser||'';
-  const smtpP = document.getElementById('s-smtp-pass'); if(smtpP) smtpP.value = '';
+  const smtpP = document.getElementById('s-smtp-pass'); if(smtpP) { smtpP.value = ''; smtpP.placeholder = cfg.smtpPass ? '(password saved — enter new one to change)' : 'Your Outlook password'; }
   document.getElementById('s-digest-time').value = cfg.digestTime||'08:00';
   const tzSel = document.getElementById('s-timezone');
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
@@ -686,8 +687,10 @@ function closeSettings() { document.getElementById('settings-modal').classList.r
 function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
+  cfg.cc = (document.getElementById('s-cc')||{value:''}).value.trim();
   cfg.smtpUser = (document.getElementById('s-smtp-user')||{value:''}).value.trim();
-  const sp = (document.getElementById('s-smtp-pass')||{value:''}).value.trim(); if(sp) cfg.smtpPass = sp;
+  const sp = (document.getElementById('s-smtp-pass')||{value:''}).value.trim();
+  if (sp) cfg.smtpPass = sp; // only overwrite if a new password was entered
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
   cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
