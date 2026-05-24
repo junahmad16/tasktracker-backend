@@ -233,10 +233,6 @@
       <input type="email" id="s-email" placeholder="you@company.com">
     </div>
     <div class="field">
-      <label>CC email address <span style="color:var(--text-hint);font-weight:400">(optional — receives all reminders)</span></label>
-      <input type="email" id="s-cc" placeholder="colleague@company.com">
-    </div>
-    <div class="field">
       <label>Your name</label>
       <input type="text" id="s-name" placeholder="e.g. Sara">
     </div>
@@ -272,7 +268,7 @@
         </select>
       </div>
     </div>
-    <div class="field" id="backend-url-field">
+    <div class="field">
       <label>Backend URL <span style="color:var(--text-hint);font-weight:400">(paste your Railway URL here)</span></label>
       <input type="url" id="s-backend" placeholder="https://your-app.railway.app">
       <div class="hint">Once set, reminders fire 24/7 even with this tab closed</div>
@@ -332,7 +328,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'', cc:'' };
+  adminPin:'', editorPin:'' };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -378,8 +374,8 @@ function showApp() {
     ? '<span class="role-badge admin">Admin</span>'
     : '<span class="role-badge editor">Editor</span>';
   renderSetupBanner();
-  // Don't render from localStorage — always wait for backend first
-  initFromBackend().then(() => render());
+  render(); // render with local data immediately
+  initFromBackend().then(() => render()); // then re-render with fresh backend data
 }
 
 function isAdmin() { return currentRole === 'admin'; }
@@ -388,24 +384,23 @@ let tasks = [], editId = null, overdueTimers = {}, digestTimer = null, emailLog 
 
 function loadCfg() {
   try { const s=localStorage.getItem(CFG_KEY); if(s) cfg={...cfg,...JSON.parse(s)}; } catch(e){}
-  // Always set backendUrl to current origin — works whether on Railway or file://
-  const origin = window.location.origin;
-  if (origin && origin !== 'null' && !origin.startsWith('file:')) {
-    cfg.backendUrl = origin;
-    saveCfg();
-  }
-}
-function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
-function loadTasks() { tasks = []; /* Always load from backend, not localStorage */ }
-function saveTasks() {
-  // Don't persist to localStorage — backend is single source of truth
-  pushToBackend();
-}
-async function pushToBackend() {
-  if (!cfg.backendUrl && window.location.protocol !== 'file:') {
+  // Auto-detect backend URL if served from Railway (not file://)
+  if (window.location.protocol !== 'file:' && !cfg.backendUrl) {
     cfg.backendUrl = window.location.origin;
     saveCfg();
   }
+  // Always use current origin if served from Railway
+  if (window.location.protocol !== 'file:') {
+    cfg.backendUrl = window.location.origin;
+  }
+}
+function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function loadTasks() { try { const s=localStorage.getItem(TASKS_KEY); if(s) tasks=JSON.parse(s); } catch(e){} }
+function saveTasks() {
+  try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch(e){}
+  pushToBackend();
+}
+async function pushToBackend() {
   if (!cfg.backendUrl) { console.warn('No backendUrl set'); return; }
   try {
     const res = await fetch(cfg.backendUrl + '/tasks', {
@@ -427,10 +422,9 @@ async function pushToBackend() {
   }
 }
 async function pushConfigToBackend() {
-  const url = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
-  if (!url) return;
+  if (!cfg.backendUrl) return;
   try {
-    const res = await fetch(url + '/config', {
+    const res = await fetch(cfg.backendUrl + '/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg)
@@ -439,7 +433,7 @@ async function pushConfigToBackend() {
       const txt = await res.text();
       console.error('pushConfigToBackend failed:', res.status, txt);
     } else {
-      console.log('Config pushed to backend OK:', cfg.name, cfg.email);
+      console.log('Config pushed to backend OK');
     }
   } catch(e) { console.error('pushConfigToBackend error:', e.message); }
 }
@@ -668,7 +662,6 @@ function checkMissedDigest() {
 function openSettings() {
   document.getElementById('s-email').value = cfg.email||'';
   document.getElementById('s-name').value = cfg.name||'';
-  const ccEl = document.getElementById('s-cc'); if(ccEl) ccEl.value = cfg.cc||'';
   document.getElementById('s-pubkey').value = cfg.pubkey||'';
   document.getElementById('s-service').value = cfg.service||'';
   document.getElementById('s-template').value = cfg.template||'';
@@ -677,9 +670,6 @@ function openSettings() {
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
   const backendEl = document.getElementById('s-backend');
   if (backendEl) backendEl.value = cfg.backendUrl||'';
-  // Hide backend URL field when already running on Railway
-  const backendField = document.getElementById('backend-url-field');
-  if (backendField) backendField.style.display = window.location.protocol !== 'file:' ? 'none' : '';
   const adminPinEl = document.getElementById('s-admin-pin');
   if (adminPinEl) adminPinEl.value = cfg.adminPin||'';
   const editorPinEl = document.getElementById('s-editor-pin');
@@ -687,25 +677,21 @@ function openSettings() {
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
-async function saveSettings() {
+function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
-  cfg.cc = (document.getElementById('s-cc')||{}).value?.trim()||'';
   cfg.pubkey = document.getElementById('s-pubkey').value.trim();
   cfg.service = document.getElementById('s-service').value.trim();
   cfg.template = document.getElementById('s-template').value.trim();
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
-  // Only use manual backend URL if running from file://
-  if (window.location.protocol === 'file:') {
-    cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
-  }
+  cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
   const newAdminPin = (document.getElementById('s-admin-pin')||{}).value?.trim();
   const newEditorPin = (document.getElementById('s-editor-pin')||{}).value?.trim();
   if (newAdminPin) cfg.adminPin = newAdminPin;
   if (newEditorPin) cfg.editorPin = newEditorPin;
   saveCfg();
-  await pushConfigToBackend();
+  pushConfigToBackend();
   pushToBackend();
   closeSettings();
   renderSetupBanner();
@@ -714,7 +700,6 @@ async function saveSettings() {
 async function sendTestEmail() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
-  cfg.cc = (document.getElementById('s-cc')||{}).value?.trim()||'';
   cfg.pubkey = document.getElementById('s-pubkey').value.trim();
   cfg.service = document.getElementById('s-service').value.trim();
   cfg.template = document.getElementById('s-template').value.trim();
@@ -794,8 +779,7 @@ function showView(v,btn) {
 function renderSetupBanner() {
   const area = document.getElementById('setup-area');
   if (emailReady()) {
-    const effectiveBackend = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
-    const backendStatus = effectiveBackend
+    const backendStatus = cfg.backendUrl
       ? `&nbsp;·&nbsp; <span style="color:var(--green)">⬡ Backend active</span>`
       : `&nbsp;·&nbsp; <span style="color:var(--amber)">⚠ No backend — <button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">add Railway URL</button></span>`;
     area.innerHTML = `<div class="email-status-bar">✓ Email reminders active &nbsp;·&nbsp; Digest at <strong>${cfg.digestTime}</strong>${backendStatus} &nbsp;·&nbsp; <span style="color:var(--text-muted)">${cfg.email}</span> &nbsp;<button onclick="openSettings()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue);font-family:'DM Sans',sans-serif;padding:0">Change</button></div>`;
@@ -894,13 +878,10 @@ loadCfg(); loadTasks();
 
 // Fetch config + tasks from backend — always backend wins
 async function initFromBackend() {
-  // Always resolve backend URL
-  const backendUrl = cfg.backendUrl || (window.location.protocol !== 'file:' ? window.location.origin : '');
-  if (!backendUrl) return;
-  cfg.backendUrl = backendUrl;
+  if (!cfg.backendUrl) return;
   try {
-    // Fetch tasks — backend is always authoritative, overwrite local
-    const tRes = await fetch(backendUrl + '/tasks');
+    // Fetch tasks
+    const tRes = await fetch(cfg.backendUrl + '/tasks');
     if (tRes.ok) {
       const tData = await tRes.json();
       if (Array.isArray(tData.tasks)) {
@@ -908,22 +889,11 @@ async function initFromBackend() {
       }
     }
     // Fetch config (pins, digest time etc)
-    const cRes = await fetch(backendUrl + '/config');
+    const cRes = await fetch(cfg.backendUrl + '/config');
     if (cRes.ok) {
       const cData = await cRes.json();
-      // Merge: backend wins for pins/schedule, keep local email keys if backend has none
-      cfg = {
-        ...cfg,
-        ...cData,
-        // Keep local email keys if backend doesn't have them
-        email:    cData.email    || cfg.email,
-        pubkey:   cData.pubkey   || cfg.pubkey,
-        service:  cData.service  || cfg.service,
-        template: cData.template || cfg.template,
-        name:     cData.name     || cfg.name,
-        adminPin: cData.adminPin || cfg.adminPin,
-        editorPin:cData.editorPin|| cfg.editorPin,
-      };
+      // Merge backend config — backend is authoritative for pins and schedule
+      cfg = { ...cfg, ...cData };
       saveCfg();
     }
   } catch(e) { console.warn('Could not reach backend on load:', e.message); }
@@ -949,15 +919,10 @@ function startPolling() {
 
 // On startup: fetch backend config first so PINs are always up to date
 async function startup() {
-  // Always set backendUrl from current origin first — before loading anything
-  const origin = window.location.origin;
-  if (origin && origin !== 'null' && !origin.startsWith('file:')) {
-    cfg.backendUrl = origin;
-  }
   // Try to pull config from backend before showing login
   if (cfg.backendUrl) {
     try {
-      const cRes = await fetch(backendUrl + '/config');
+      const cRes = await fetch(cfg.backendUrl + '/config');
       if (cRes.ok) {
         const cData = await cRes.json();
         cfg = { ...cfg, ...cData };
