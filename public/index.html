@@ -288,7 +288,7 @@
       </div>
     </div>
     <div class="modal-footer spread">
-      <button class="btn-ghost" id="test-btn" onclick="sendTestEmail()">Send test email</button>
+      <button class="btn-ghost" onclick="triggerTestDigest()">Send test email</button>
       <div style="display:flex;gap:8px">
         <button class="btn-ghost" onclick="closeSettings()">Cancel</button>
         <button class="btn-primary" onclick="saveSettings()">Save settings</button>
@@ -484,6 +484,19 @@ function statusLabel(s) { return {overdue:'Overdue','due-today':'Due today','due
 
 // ── EMAIL ────────────────────────────────────────────
 function emailReady() { return !!(cfg.email&&cfg.pubkey&&cfg.service&&cfg.template); }
+
+async function triggerTestDigest() {
+  if (!cfg.backendUrl) { alert('Backend URL not configured.'); return; }
+  try {
+    const res = await fetch(cfg.backendUrl + '/test-digest');
+    const data = await res.json();
+    if (data.ok) {
+      alert('Test email sent successfully!');
+    } else {
+      alert('Failed to send. Check Railway logs for details.');
+    }
+  } catch(e) { alert('Could not reach backend: ' + e.message); }
+}
 
 async function sendEmail(subject, message, type) {
   if (!emailReady()) return false;

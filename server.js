@@ -46,7 +46,8 @@ let tasks = [];
 let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
-  timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:''
+  timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:'',
+  smtpUser:'', smtpPass:'', smtpHost:'smtp.office365.com', smtpPort:587
 };
 let overdueTimers = {};
 let digestCronJob = null;
@@ -88,24 +89,34 @@ function fmtTime(t) {
   const [h,m]=t.split(':');
   return `${+h%12||12}:${m} ${+h>=12?'PM':'AM'}`;
 }
-function emailReady() { return !!(cfg.email&&cfg.pubkey&&cfg.service&&cfg.template); }
-
 // ── EMAIL ─────────────────────────────────────────────
+const nodemailer = require('nodemailer');
+
+function createTransporter() {
+  if (!cfg.smtpUser || !cfg.smtpPass) return null;
+  return nodemailer.createTransport({
+    host: cfg.smtpHost || 'smtp.office365.com',
+    port: cfg.smtpPort || 587,
+    secure: false,
+    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+    tls: { ciphers: 'SSLv3' }
+  });
+}
+
+function emailReady() { return !!(cfg.email && cfg.smtpUser && cfg.smtpPass); }
+
 async function sendEmail(subject, message, type) {
   if (!emailReady()) { console.log('Email not configured'); return false; }
   try {
-    const payload = {
-      service_id: cfg.service,
-      template_id: cfg.template,
-      user_id: cfg.pubkey,
-      template_params: { to_email:cfg.email, subject, message, cc_email:cfg.cc||'' }
+    const transporter = createTransporter();
+    const mailOptions = {
+      from: `"Task Tracker" <${cfg.smtpUser}>`,
+      to: cfg.email,
+      cc: cfg.cc || undefined,
+      subject: subject,
+      html: message
     };
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    if (!res.ok) { const err=await res.text(); throw new Error(`${res.status}: ${err}`); }
+    await transporter.sendMail(mailOptions);
     console.log(`[${type}] Email sent OK: ${subject}`);
     return true;
   } catch(e) { console.error(`[${type}] Email FAILED:`, e.message); return false; }
@@ -222,7 +233,7 @@ function startDigestCron() {
 
 // ── ROUTES ────────────────────────────────────────────
 app.get('/health', (req,res) => {
-  res.json({ status:'ok', tasks:tasks.length, emailConfigured:emailReady(), digestTime:cfg.digestTime, timezone:cfg.timezone, email:cfg.email });
+  res.json({ status:'ok', tasks:tasks.length, emailConfigured:emailReady(), digestTime:cfg.digestTime, timezone:cfg.timezone, email:cfg.email, smtpConfigured:!!(cfg.smtpUser&&cfg.smtpPass) });
 });
 
 app.get('/tasks', (req,res) => res.json({ tasks }));
@@ -238,7 +249,8 @@ app.post('/tasks', async(req,res) => {
 app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
     adminPin:cfg.adminPin, editorPin:cfg.editorPin, backendUrl:cfg.backendUrl,
-    email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc });
+    email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
+    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, smtpHost:cfg.smtpHost, smtpPort:cfg.smtpPort });
 });
 
 app.post('/config', async(req,res) => {
