@@ -220,37 +220,30 @@
       All reminders go to <strong>one inbox — yours</strong>. You get a single morning digest covering everything overdue or due that day, plus an instant alert the moment any task hits its deadline.
     </p>
     <div class="divider" style="margin-top:0"></div>
-    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">EmailJS setup — free, 200 emails/month</p>
-    <div class="steps">
-      <div class="step"><div class="step-n">1</div><div>Create a free account at <a href="https://www.emailjs.com" target="_blank">emailjs.com</a></div></div>
-      <div class="step"><div class="step-n">2</div><div>Go to <strong>Email Services</strong> → Add new service → connect Gmail or Outlook</div></div>
-      <div class="step"><div class="step-n">3</div><div>Go to <strong>Email Templates</strong> → Create template. Set: To = <code>{{to_email}}</code>, Subject = <code>{{subject}}</code>, Body = <code>{{message}}</code></div></div>
-      <div class="step"><div class="step-n">4</div><div>Copy your <strong>Public Key</strong> (Account → General), <strong>Service ID</strong>, and <strong>Template ID</strong> — paste below</div></div>
-    </div>
-    <div class="divider"></div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Email settings</p>
     <div class="field">
-      <label>Your email address (all reminders go here)</label>
+      <label>Reminder email address (all reminders go here)</label>
       <input type="email" id="s-email" placeholder="you@company.com">
     </div>
     <div class="field">
-      <label>Your name</label>
-      <input type="text" id="s-name" placeholder="e.g. Sara">
+      <label>CC email address <span style="color:var(--text-hint);font-weight:400">(optional)</span></label>
+      <input type="email" id="s-cc" placeholder="colleague@company.com">
     </div>
     <div class="field">
-      <label>EmailJS Public Key</label>
-      <input type="text" id="s-pubkey" placeholder="user_xxxxxxxxxxxxxxxxx">
-      <div class="hint"><a href="https://dashboard.emailjs.com/admin/account" target="_blank">Account → General → Public Key</a></div>
+      <label>Your name</label>
+      <input type="text" id="s-name" placeholder="e.g. Salwa">
     </div>
-    <div class="grid2">
-      <div class="field">
-        <label>Service ID</label>
-        <input type="text" id="s-service" placeholder="service_xxxxxxx">
-      </div>
-      <div class="field">
-        <label>Template ID</label>
-        <input type="text" id="s-template" placeholder="template_xxxxxxx">
-      </div>
+    <div class="divider"></div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Outlook SMTP — sends emails automatically</p>
+    <div class="field">
+      <label>Outlook sending address</label>
+      <input type="email" id="s-smtp-user" placeholder="sender@zaicor.com">
     </div>
+    <div class="field">
+      <label>Outlook password</label>
+      <input type="password" id="s-smtp-pass" placeholder="Your Outlook password" autocomplete="new-password">
+      <div class="hint">If MFA is enabled, use an App Password from account.microsoft.com</div>
+    </div></div>
     <div class="grid2">
       <div class="field">
         <label>Morning digest time</label>
@@ -328,7 +321,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'' };
+  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'' };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -483,7 +476,7 @@ function fmtTime(t) { if(!t) return ''; const [h,m]=t.split(':'); return `${+h%1
 function statusLabel(s) { return {overdue:'Overdue','due-today':'Due today','due-soon':'Due soon',done:'Done',pending:'Pending'}[s]||'Pending'; }
 
 // ── EMAIL ────────────────────────────────────────────
-function emailReady() { return !!(cfg.email&&cfg.pubkey&&cfg.service&&cfg.template); }
+function emailReady() { return !!(cfg.email&&cfg.smtpUser&&cfg.smtpPass); }
 
 async function triggerTestDigest() {
   if (!cfg.backendUrl) { alert('Backend URL not configured.'); return; }
@@ -675,9 +668,8 @@ function checkMissedDigest() {
 function openSettings() {
   document.getElementById('s-email').value = cfg.email||'';
   document.getElementById('s-name').value = cfg.name||'';
-  document.getElementById('s-pubkey').value = cfg.pubkey||'';
-  document.getElementById('s-service').value = cfg.service||'';
-  document.getElementById('s-template').value = cfg.template||'';
+  const smtpU = document.getElementById('s-smtp-user'); if(smtpU) smtpU.value = cfg.smtpUser||'';
+  const smtpP = document.getElementById('s-smtp-pass'); if(smtpP) smtpP.value = '';
   document.getElementById('s-digest-time').value = cfg.digestTime||'08:00';
   const tzSel = document.getElementById('s-timezone');
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
@@ -693,9 +685,8 @@ function closeSettings() { document.getElementById('settings-modal').classList.r
 function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
-  cfg.pubkey = document.getElementById('s-pubkey').value.trim();
-  cfg.service = document.getElementById('s-service').value.trim();
-  cfg.template = document.getElementById('s-template').value.trim();
+  cfg.smtpUser = (document.getElementById('s-smtp-user')||{value:''}).value.trim();
+  const sp = (document.getElementById('s-smtp-pass')||{value:''}).value.trim(); if(sp) cfg.smtpPass = sp;
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
   cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
@@ -709,6 +700,22 @@ function saveSettings() {
   closeSettings();
   renderSetupBanner();
   render();
+}
+async function triggerTestDigest() {
+  const url = cfg.backendUrl || window.location.origin;
+  try {
+    const res = await fetch(url + '/test-digest');
+    const data = await res.json();
+    alert(data.ok ? 'Test email sent successfully!' : 'Failed — check Railway logs. Details: ' + JSON.stringify(data));
+  } catch(e) { alert('Could not reach backend: ' + e.message); }
+}
+async function triggerTestDigest() {
+  const url = cfg.backendUrl || window.location.origin;
+  try {
+    const res = await fetch(url + '/test-digest');
+    const data = await res.json();
+    alert(data.ok ? 'Test email sent!' : 'Failed: ' + JSON.stringify(data));
+  } catch(e) { alert('Error: ' + e.message); }
 }
 async function sendTestEmail() {
   cfg.email = document.getElementById('s-email').value.trim();
