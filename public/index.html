@@ -893,12 +893,20 @@ function populatePeopleDropdowns(toVal, byVal) {
 }
 
 function openPeopleModal() {
+  // Seed cfg.people with any names already in tasks that aren't in the list yet
+  if (!Array.isArray(cfg.people)) cfg.people = [];
+  const fromTasks = tasks.flatMap(t => [t.assignedTo, t.assignedBy]).filter(Boolean);
+  fromTasks.forEach(name => {
+    if (!cfg.people.map(p=>p.toLowerCase()).includes(name.toLowerCase())) {
+      cfg.people.push(name);
+    }
+  });
+  cfg.people.sort((a,b)=>a.localeCompare(b));
   renderPeopleList();
   document.getElementById('people-modal').classList.add('open');
 }
 function closePeopleModal() {
   document.getElementById('people-modal').classList.remove('open');
-  // Refresh dropdowns with current values preserved
   const toVal = document.getElementById('f-to').value;
   const byVal = document.getElementById('f-by').value;
   populatePeopleDropdowns(toVal, byVal);
@@ -911,10 +919,10 @@ function renderPeopleList() {
     area.innerHTML = '<div style="font-size:13px;color:var(--text-hint);padding:8px 0">No people added yet.</div>';
     return;
   }
-  area.innerHTML = people.map(p=>`
+  area.innerHTML = people.map((p, i)=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)">
       <span style="font-size:13px;font-weight:500">${esc(p)}</span>
-      <button onclick="removePerson('${esc(p)}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-hint);padding:2px 6px;border-radius:6px;transition:all .12s" onmouseover="this.style.color='var(--red)';this.style.background='var(--red-bg)'" onmouseout="this.style.color='var(--text-hint)';this.style.background='none'">Remove</button>
+      <button data-idx="${i}" onclick="removePerson(this)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-hint);padding:2px 8px;border-radius:6px;transition:all .12s" onmouseover="this.style.color='var(--red)';this.style.background='var(--red-bg)'" onmouseout="this.style.color='var(--text-hint)';this.style.background='none'">Remove</button>
     </div>`).join('');
 }
 
@@ -934,9 +942,12 @@ function addPerson() {
   renderPeopleList();
 }
 
-function removePerson(name) {
-  if (!confirm(`Remove "${name}" from the list?`)) return;
-  cfg.people = (cfg.people||[]).filter(p=>p!==name);
+function removePerson(btn) {
+  const idx = parseInt(btn.getAttribute('data-idx'));
+  const sorted = [...cfg.people].sort((a,b)=>a.localeCompare(b));
+  const name = sorted[idx];
+  if (!name || !confirm(`Remove "${name}" from the list?`)) return;
+  cfg.people = cfg.people.filter(p=>p!==name);
   saveCfg();
   pushConfigToBackend();
   renderPeopleList();
