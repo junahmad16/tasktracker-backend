@@ -37,6 +37,7 @@
   .login-hint{font-size:12px;color:var(--text-hint);margin-top:1rem;text-align:center}
   .role-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;border:1px solid}
   .role-badge.admin{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
+  .role-badge.manager{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
   .role-badge.editor{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
   .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50}
   .header-brand{font-size:15px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
@@ -276,11 +277,16 @@
     </div>
     <div class="divider"></div>
     <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Access PINs</p>
-    <div class="grid2">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="field">
         <label>Admin PIN <span style="color:var(--text-hint);font-weight:400">(you)</span></label>
         <input type="password" id="s-admin-pin" placeholder="Set a PIN" autocomplete="new-password">
         <div class="hint">Full access including settings</div>
+      </div>
+      <div class="field">
+        <label>Manager PIN</label>
+        <input type="password" id="s-manager-pin" placeholder="Set a PIN" autocomplete="new-password">
+        <div class="hint">Full access except settings</div>
       </div>
       <div class="field">
         <label>Editor PIN <span style="color:var(--text-hint);font-weight:400">(HR)</span></label>
@@ -371,7 +377,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'', people:[] };
+  adminPin:'', editorPin:'', managerPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'', people:[] };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -383,6 +389,8 @@ function doLogin() {
   if (!pin) { err.textContent = 'Please enter your PIN.'; return; }
   if (cfg.adminPin && pin === cfg.adminPin) {
     currentRole = 'admin';
+  } else if (cfg.managerPin && pin === cfg.managerPin) {
+    currentRole = 'manager';
   } else if (cfg.editorPin && pin === cfg.editorPin) {
     currentRole = 'editor';
   } else if (!cfg.adminPin && !cfg.editorPin) {
@@ -409,21 +417,24 @@ function doLogout() {
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  // Show/hide elements based on role
-  const isAdmin = currentRole === 'admin';
+  const isAdmin   = currentRole === 'admin';
+  const isManager = currentRole === 'manager';
   document.getElementById('btn-settings').style.display = isAdmin ? '' : 'none';
-  document.getElementById('log-tab').style.display = isAdmin ? '' : 'none';
-  document.getElementById('btn-people').style.display = isAdmin ? '' : 'none';
-  document.getElementById('role-indicator').innerHTML = isAdmin
-    ? '<span class="role-badge admin">Admin</span>'
-    : '<span class="role-badge editor">Editor</span>';
+  document.getElementById('log-tab').style.display = (isAdmin || isManager) ? '' : 'none';
+  document.getElementById('btn-people').style.display = (isAdmin || isManager) ? '' : 'none';
+  document.getElementById('role-indicator').innerHTML =
+    isAdmin   ? '<span class="role-badge admin">Admin</span>' :
+    isManager ? '<span class="role-badge manager">Manager</span>' :
+                '<span class="role-badge editor">Editor</span>';
   renderSetupBanner();
   render(); // render with local data immediately
   initFromBackend().then(() => render()); // then re-render with fresh backend data
 }
 
-function isAdmin() { return currentRole === 'admin'; }
-function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
+function isAdmin()   { return currentRole === 'admin'; }
+function isManager() { return currentRole === 'manager'; }
+function canEdit()   { return currentRole === 'admin' || currentRole === 'manager' || currentRole === 'editor'; }
+function canDelete() { return currentRole === 'admin' || currentRole === 'manager'; }
 let tasks = [], editId = null, overdueTimers = {}, digestTimer = null, emailLog = [];
 
 function loadCfg() {
@@ -747,6 +758,8 @@ function openSettings() {
   if (backendEl) backendEl.value = cfg.backendUrl||'';
   const adminPinEl = document.getElementById('s-admin-pin');
   if (adminPinEl) adminPinEl.value = cfg.adminPin||'';
+  const managerPinEl = document.getElementById('s-manager-pin');
+  if (managerPinEl) managerPinEl.value = cfg.managerPin||'';
   const editorPinEl = document.getElementById('s-editor-pin');
   if (editorPinEl) editorPinEl.value = cfg.editorPin||'';
   document.getElementById('settings-modal').classList.add('open');
@@ -762,8 +775,10 @@ function saveSettings() {
   cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
   const newAdminPin = (document.getElementById('s-admin-pin')||{}).value?.trim();
+  const newManagerPin = (document.getElementById('s-manager-pin')||{}).value?.trim();
   const newEditorPin = (document.getElementById('s-editor-pin')||{}).value?.trim();
   if (newAdminPin) cfg.adminPin = newAdminPin;
+  if (newManagerPin) cfg.managerPin = newManagerPin;
   if (newEditorPin) cfg.editorPin = newEditorPin;
   saveCfg();
   pushConfigToBackend();
@@ -1233,7 +1248,7 @@ function render() {
       <div class="tc-footer">
         ${!t.done?`<button class="act-btn done-btn" onclick="markDone('${t.id}')">✓ Mark done</button>`:''}
         <button class="act-btn" onclick="openEditTask('${t.id}')">Edit</button>
-        ${isAdmin()?`<button class="act-btn del-btn" onclick="deleteTask('${t.id}')">Delete</button>`:''}
+        ${canDelete()?`<button class="act-btn del-btn" onclick="deleteTask('${t.id}')">Delete</button>`:''}
       </div>
     </div>`;
   }).join('');
