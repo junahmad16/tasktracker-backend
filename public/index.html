@@ -178,6 +178,7 @@
     <span id="sync-status" style="display:none;font-size:12px;font-weight:500;padding:3px 8px;border-radius:6px;background:var(--surface2)"></span>
     <span id="role-indicator"></span>
     <button class="btn-settings" id="btn-settings" onclick="openSettings()" title="Email settings" style="display:none">⚙</button>
+    <button class="btn-settings" id="btn-people" onclick="openPeopleModal()" title="Manage people" style="display:none;font-size:13px">👥</button>
     <button class="btn-primary" id="btn-add-task" onclick="openAddTask()">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       Add task
@@ -307,8 +308,8 @@
     </div>
     <div class="field"><label>Task details *</label><textarea id="f-details" placeholder="Describe the task clearly…"></textarea></div>
     <div class="grid2">
-      <div class="field"><label>Assigned to</label><input type="text" id="f-to" placeholder="Full name"></div>
-      <div class="field"><label>Assigned by</label><input type="text" id="f-by" placeholder="Full name"></div>
+      <div class="field"><label>Assigned to</label><select id="f-to"><option value="">— Select person —</option></select></div>
+      <div class="field"><label>Assigned by</label><select id="f-by"><option value="">— Select person —</option></select></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Assigned date</label><input type="date" id="f-adate"></div>
@@ -344,11 +345,33 @@
   </div>
 </div>
 
+<!-- MANAGE PEOPLE MODAL -->
+<div class="modal-overlay" id="people-modal" onclick="closeBg(event,'people-modal')">
+  <div class="modal narrow">
+    <div class="modal-header">
+      <span class="modal-title">Manage People</span>
+      <button class="modal-close" onclick="closePeopleModal()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">These names appear in the Assigned to / Assigned by dropdowns.</p>
+    <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1">
+        <label>Add a name</label>
+        <input type="text" id="new-person-input" placeholder="Full name" onkeydown="if(event.key==='Enter')addPerson()">
+      </div>
+      <button class="btn-primary" onclick="addPerson()" style="flex-shrink:0;height:36px">Add</button>
+    </div>
+    <div id="people-list" style="margin-top:4px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closePeopleModal()">Done</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'' };
+  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'', people:[] };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -390,6 +413,7 @@ function showApp() {
   const isAdmin = currentRole === 'admin';
   document.getElementById('btn-settings').style.display = isAdmin ? '' : 'none';
   document.getElementById('log-tab').style.display = isAdmin ? '' : 'none';
+  document.getElementById('btn-people').style.display = isAdmin ? '' : 'none';
   document.getElementById('role-indicator').innerHTML = isAdmin
     ? '<span class="role-badge admin">Admin</span>'
     : '<span class="role-badge editor">Editor</span>';
@@ -823,10 +847,11 @@ async function sendTestEmail() {
 function openAddTask() {
   editId = null;
   document.getElementById('task-modal-title').textContent = 'Add new task';
-  ['f-details','f-to','f-by','f-ddate','f-dtime'].forEach(id => document.getElementById(id).value='');
+  ['f-details','f-ddate','f-dtime'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-priority').value = '';
   document.getElementById('f-recur').value = '';
   document.getElementById('f-adate').value = today();
+  populatePeopleDropdowns('', '');
   document.getElementById('task-modal').classList.add('open');
 }
 function openEditTask(id) {
@@ -834,23 +859,95 @@ function openEditTask(id) {
   const t = tasks.find(x=>x.id===id);
   document.getElementById('task-modal-title').textContent = 'Edit task';
   document.getElementById('f-details').value = t.details||'';
-  document.getElementById('f-to').value = t.assignedTo||'';
-  document.getElementById('f-by').value = t.assignedBy||'';
   document.getElementById('f-adate').value = t.assignedDate||today();
   document.getElementById('f-ddate').value = t.dueDate||'';
   document.getElementById('f-dtime').value = t.dueTime||'';
   document.getElementById('f-priority').value = t.priority||'';
   document.getElementById('f-recur').value = t.recur||'';
+  populatePeopleDropdowns(t.assignedTo||'', t.assignedBy||'');
   document.getElementById('task-modal').classList.add('open');
 }
 function closeTaskModal() { document.getElementById('task-modal').classList.remove('open'); }
+
+// ── PEOPLE ────────────────────────────────────────────
+function getPeople() {
+  // Merge saved list with names already in tasks (backward compat)
+  const saved = Array.isArray(cfg.people) ? cfg.people : [];
+  const fromTasks = tasks.flatMap(t => [t.assignedTo, t.assignedBy]).filter(Boolean);
+  const all = [...new Set([...saved, ...fromTasks])].sort((a,b)=>a.localeCompare(b));
+  return all;
+}
+
+function populatePeopleDropdowns(toVal, byVal) {
+  const people = getPeople();
+  ['f-to','f-by'].forEach(id => {
+    const sel = document.getElementById(id);
+    const current = id==='f-to' ? toVal : byVal;
+    sel.innerHTML = '<option value="">— Select person —</option>'
+      + people.map(p=>`<option value="${esc(p)}"${p===current?' selected':''}>${esc(p)}</option>`).join('')
+      + '<option value="__add__">+ Add new person…</option>';
+    sel.onchange = function() {
+      if (this.value === '__add__') { this.value = current||''; openPeopleModal(); }
+    };
+  });
+}
+
+function openPeopleModal() {
+  renderPeopleList();
+  document.getElementById('people-modal').classList.add('open');
+}
+function closePeopleModal() {
+  document.getElementById('people-modal').classList.remove('open');
+  // Refresh dropdowns with current values preserved
+  const toVal = document.getElementById('f-to').value;
+  const byVal = document.getElementById('f-by').value;
+  populatePeopleDropdowns(toVal, byVal);
+}
+
+function renderPeopleList() {
+  const people = Array.isArray(cfg.people) ? [...cfg.people].sort((a,b)=>a.localeCompare(b)) : [];
+  const area = document.getElementById('people-list');
+  if (!people.length) {
+    area.innerHTML = '<div style="font-size:13px;color:var(--text-hint);padding:8px 0">No people added yet.</div>';
+    return;
+  }
+  area.innerHTML = people.map(p=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)">
+      <span style="font-size:13px;font-weight:500">${esc(p)}</span>
+      <button onclick="removePerson('${esc(p)}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-hint);padding:2px 6px;border-radius:6px;transition:all .12s" onmouseover="this.style.color='var(--red)';this.style.background='var(--red-bg)'" onmouseout="this.style.color='var(--text-hint)';this.style.background='none'">Remove</button>
+    </div>`).join('');
+}
+
+function addPerson() {
+  const input = document.getElementById('new-person-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (!Array.isArray(cfg.people)) cfg.people = [];
+  if (cfg.people.map(p=>p.toLowerCase()).includes(name.toLowerCase())) {
+    input.value = ''; return;
+  }
+  cfg.people.push(name);
+  cfg.people.sort((a,b)=>a.localeCompare(b));
+  input.value = '';
+  saveCfg();
+  pushConfigToBackend();
+  renderPeopleList();
+}
+
+function removePerson(name) {
+  if (!confirm(`Remove "${name}" from the list?`)) return;
+  cfg.people = (cfg.people||[]).filter(p=>p!==name);
+  saveCfg();
+  pushConfigToBackend();
+  renderPeopleList();
+}
 function saveTask() {
   const details = document.getElementById('f-details').value.trim();
   if (!details) { alert('Please enter task details.'); return; }
   const t = {
     id: editId||uid(), details,
-    assignedTo: document.getElementById('f-to').value.trim(),
-    assignedBy: document.getElementById('f-by').value.trim(),
+    assignedTo: document.getElementById('f-to').value === '__add__' ? '' : document.getElementById('f-to').value.trim(),
+    assignedBy: document.getElementById('f-by').value === '__add__' ? '' : document.getElementById('f-by').value.trim(),
     assignedDate: document.getElementById('f-adate').value,
     dueDate: document.getElementById('f-ddate').value,
     dueTime: document.getElementById('f-dtime').value,
