@@ -15,6 +15,7 @@
     --blue:#1A5FA8;--blue-bg:#EBF2FB;--blue-border:#AECBEE;
     --green:#2A6E3F;--green-bg:#EAF5EE;--green-border:#9ED4B2;
     --purple:#5B35B0;--purple-bg:#F2EEFB;--purple-border:#C9B8F0;
+    --orange:#C45A00;--orange-bg:#FEF3E8;--orange-border:#F8C88A;
     --radius:10px;--radius-lg:14px;
     --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
     --shadow-md:0 4px 16px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
@@ -88,6 +89,10 @@
   .badge.due-soon{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
   .badge.done{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
   .badge.pending{background:var(--surface2);color:var(--text-muted);border-color:var(--border)}
+  .priority-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.04em;flex-shrink:0;border:1px solid;text-transform:uppercase}
+  .priority-badge.high{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+  .priority-badge.medium{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
+  .priority-badge.low{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
   .tc-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--text-muted);margin-bottom:10px}
   .tc-overdue{display:inline-block;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;padding:2px 8px;margin-bottom:10px}
   .tc-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px}
@@ -166,6 +171,7 @@
     <button class="nav-btn" onclick="showView('log',this)" id="log-tab" style="display:none">
       Email log <span class="pip" id="log-pip"></span>
     </button>
+    <button class="nav-btn" onclick="showView('dashboard',this)" id="dashboard-tab">Dashboard</button>
   </div>
   <div class="header-right">
     <span id="sync-status" style="display:none;font-size:12px;font-weight:500;padding:3px 8px;border-radius:6px;background:var(--surface2)"></span>
@@ -206,6 +212,9 @@
   <div id="view-log" style="display:none">
     <div class="section-label">Sent email reminders</div>
     <div id="log-list-area"></div>
+  </div>
+  <div id="view-dashboard" style="display:none">
+    <div id="dashboard-content"></div>
   </div>
 </main>
 
@@ -307,6 +316,15 @@
     <div class="field">
       <label>Due time <span style="color:var(--text-hint);font-weight:400">(leave blank = end of day)</span></label>
       <input type="time" id="f-dtime" style="width:160px">
+    </div>
+    <div class="field">
+      <label>Priority</label>
+      <select id="f-priority">
+        <option value="">— No priority —</option>
+        <option value="high">🔴 High</option>
+        <option value="medium">🟠 Medium</option>
+        <option value="low">🟢 Low</option>
+      </select>
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeTaskModal()">Cancel</button>
@@ -795,6 +813,7 @@ function openAddTask() {
   editId = null;
   document.getElementById('task-modal-title').textContent = 'Add new task';
   ['f-details','f-to','f-by','f-ddate','f-dtime'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-priority').value = '';
   document.getElementById('f-adate').value = today();
   document.getElementById('task-modal').classList.add('open');
 }
@@ -808,6 +827,7 @@ function openEditTask(id) {
   document.getElementById('f-adate').value = t.assignedDate||today();
   document.getElementById('f-ddate').value = t.dueDate||'';
   document.getElementById('f-dtime').value = t.dueTime||'';
+  document.getElementById('f-priority').value = t.priority||'';
   document.getElementById('task-modal').classList.add('open');
 }
 function closeTaskModal() { document.getElementById('task-modal').classList.remove('open'); }
@@ -821,6 +841,7 @@ function saveTask() {
     assignedDate: document.getElementById('f-adate').value,
     dueDate: document.getElementById('f-ddate').value,
     dueTime: document.getElementById('f-dtime').value,
+    priority: document.getElementById('f-priority').value,
     done: editId ? (tasks.find(x=>x.id===editId)||{}).done||false : false,
   };
   tasks = editId ? tasks.map(x=>x.id===editId?t:x) : [t,...tasks];
@@ -842,11 +863,13 @@ function closeBg(e,id) { if(e.target.id===id) document.getElementById(id).classL
 
 // ── VIEWS ─────────────────────────────────────────────
 function showView(v,btn) {
-  document.getElementById('view-tasks').style.display = v==='tasks'?'':'none';
-  document.getElementById('view-log').style.display   = v==='log'?'':'none';
+  document.getElementById('view-tasks').style.display     = v==='tasks'?'':'none';
+  document.getElementById('view-log').style.display       = v==='log'?'':'none';
+  document.getElementById('view-dashboard').style.display = v==='dashboard'?'':'none';
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   if(v==='log') { document.getElementById('log-pip').style.display='none'; renderLog(); }
+  if(v==='dashboard') renderDashboard();
 }
 
 // ── RENDER ────────────────────────────────────────────
@@ -860,6 +883,141 @@ function renderSetupBanner() {
   } else {
     area.innerHTML = `<div class="setup-banner"><div class="setup-banner-text"><strong>Set up email reminders</strong> — one morning digest of all due &amp; overdue tasks, plus instant alerts when deadlines pass.</div><button class="btn-configure" onclick="openSettings()">Configure →</button></div>`;
   }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────
+function renderDashboard() {
+  const area = document.getElementById('dashboard-content');
+  if (!area) return;
+
+  const now = new Date();
+
+  // Compute statuses
+  const allStatuses = tasks.map(t => getStatus(t));
+  const counts = {overdue:0,'due-today':0,'due-soon':0,pending:0,done:0,total:tasks.length};
+  allStatuses.forEach(s => { if(s in counts) counts[s]++; });
+
+  // Priority breakdown (exclude no-priority tasks from chart but count them)
+  const pCounts = {high:0,medium:0,low:0,none:0};
+  tasks.forEach(t => { const p=t.priority||'none'; if(p in pCounts) pCounts[p]++; });
+  const pTotal = pCounts.high+pCounts.medium+pCounts.low+pCounts.none||1;
+
+  // Tasks by assignee (active only — not done)
+  const byAssignee = {};
+  tasks.filter(t=>!t.done).forEach(t => {
+    const n=t.assignedTo||'Unassigned';
+    if(!byAssignee[n]) byAssignee[n]={total:0,overdue:0};
+    byAssignee[n].total++;
+    if(getStatus(t)==='overdue') byAssignee[n].overdue++;
+  });
+  const assigneeEntries = Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total);
+  const maxAssignee = Math.max(...assigneeEntries.map(e=>e[1].total),1);
+
+  // Overdue tasks detail
+  const overdueTasks = tasks.filter(t=>!t.done&&getStatus(t)==='overdue')
+    .sort((a,b)=>dueDateTime(a)-dueDateTime(b));
+
+  function pct(n,d){ return Math.round((n/d)*100)||0; }
+  function barW(n,max){ return Math.max(Math.round((n/max)*100),3); }
+
+  const statCards = [
+    {label:'Total tasks', val:counts.total, color:''},
+    {label:'Overdue',     val:counts.overdue, color:'var(--red)'},
+    {label:'Due today',   val:counts['due-today'], color:'var(--amber)'},
+    {label:'Done',        val:counts.done, color:'var(--green)'},
+  ].map(c=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow)">
+      <div style="font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:32px;font-weight:300;font-family:'DM Mono',monospace;color:${c.color||'var(--text)'};">${c.val}</div>
+    </div>`).join('');
+
+  const priorityRows = [
+    {key:'high',   label:'High',   color:'var(--red)',    bg:'var(--red-bg)'},
+    {key:'medium', label:'Medium', color:'var(--orange)', bg:'var(--orange-bg)'},
+    {key:'low',    label:'Low',    color:'var(--green)',  bg:'var(--green-bg)'},
+    {key:'none',   label:'No priority', color:'var(--text-hint)', bg:'var(--surface2)'},
+  ].map(p=>`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:70px;font-size:12px;font-weight:500;color:var(--text-muted);flex-shrink:0">${p.label}</div>
+      <div style="flex:1;background:var(--surface2);border-radius:4px;height:18px;overflow:hidden">
+        <div style="width:${pct(pCounts[p.key],pTotal)}%;background:${p.color};height:100%;border-radius:4px;transition:width .4s;min-width:${pCounts[p.key]?3:0}px"></div>
+      </div>
+      <div style="width:28px;text-align:right;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted)">${pCounts[p.key]}</div>
+    </div>`).join('');
+
+  const assigneeRows = assigneeEntries.length ? assigneeEntries.map(([name,d])=>`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:90px;font-size:12px;font-weight:500;color:var(--text-muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(name)}">${esc(name)}</div>
+      <div style="flex:1;background:var(--surface2);border-radius:4px;height:18px;overflow:hidden;position:relative">
+        <div style="width:${barW(d.total,maxAssignee)}%;background:var(--blue);height:100%;border-radius:4px;opacity:.7"></div>
+        ${d.overdue?`<div style="position:absolute;top:0;left:0;width:${barW(d.overdue,maxAssignee)}%;background:var(--red);height:100%;border-radius:4px;opacity:.85"></div>`:''}
+      </div>
+      <div style="width:52px;text-align:right;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted)">${d.total}${d.overdue?` <span style="color:var(--red);font-size:11px">(${d.overdue})</span>`:''}</div>
+    </div>`).join('')
+  : `<div style="font-size:13px;color:var(--text-hint);padding:12px 0">No active tasks.</div>`;
+
+  const overdueRows = overdueTasks.length ? overdueTasks.map(t=>`
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;line-height:1.4">${esc(t.details)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);white-space:nowrap">${esc(t.assignedTo||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);white-space:nowrap">${fmtDate(t.dueDate)}${t.dueTime?' · '+fmtTime(t.dueTime):''}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap">${t.priority?`<span class="priority-badge ${t.priority}">${t.priority}</span>`:'-'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);white-space:nowrap">${overdueStr(t).replace('Overdue by ','')}</td>
+    </tr>`).join('')
+  : `<tr><td colspan="5" style="padding:24px 12px;text-align:center;color:var(--text-hint);font-size:13px">No overdue tasks 🎉</td></tr>`;
+
+  area.innerHTML = `
+    <div style="margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:18px;font-weight:600;letter-spacing:-.3px">Dashboard</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px">View only · Auto-refreshes every 30s</div>
+      </div>
+      <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text-hint)">Last updated: ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>
+
+    <!-- Stat cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem">
+      ${statCards}
+    </div>
+
+    <!-- Charts row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem">
+      <!-- Priority breakdown -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:14px">Priority Breakdown</div>
+        ${priorityRows}
+        <div style="margin-top:6px;font-size:11px;color:var(--text-hint)">Total: ${tasks.length} task${tasks.length!==1?'s':''}</div>
+      </div>
+      <!-- Tasks by assignee -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:14px">Active Tasks by Assignee</div>
+        ${assigneeRows}
+        <div style="margin-top:6px;font-size:11px;color:var(--text-hint);display:flex;gap:12px">
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue);border-radius:2px;opacity:.7;margin-right:4px"></span>Total</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px;opacity:.85;margin-right:4px"></span>Overdue (in red)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overdue detail table -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint)">Overdue Tasks</div>
+        ${overdueTasks.length?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)">${overdueTasks.length} overdue</span>`:''}
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--bg)">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint);border-bottom:1px solid var(--border)">Task</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint);border-bottom:1px solid var(--border);white-space:nowrap">Assigned to</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint);border-bottom:1px solid var(--border);white-space:nowrap">Due</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint);border-bottom:1px solid var(--border)">Priority</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-hint);border-bottom:1px solid var(--border);white-space:nowrap">Overdue by</th>
+          </tr>
+        </thead>
+        <tbody>${overdueRows}</tbody>
+      </table>
+    </div>`;
 }
 
 function render() {
@@ -909,7 +1067,10 @@ function render() {
     return `<div class="task-card ${s}">
       <div class="tc-header">
         <div class="tc-title">${esc(t.details)}</div>
-        <span class="badge ${s}">${statusLabel(s)}</span>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          ${t.priority?`<span class="priority-badge ${t.priority}">${t.priority}</span>`:''}
+          <span class="badge ${s}">${statusLabel(s)}</span>
+        </div>
       </div>
       <div class="tc-meta">
         ${t.assignedTo?`<span>→ To: ${esc(t.assignedTo)}</span>`:''}
@@ -985,6 +1146,7 @@ function startPolling() {
         if (Array.isArray(data.tasks)) {
           tasks = data.tasks;
           if (document.getElementById('view-tasks').style.display !== 'none') render();
+          if (document.getElementById('view-dashboard').style.display !== 'none') renderDashboard();
         }
       }
     } catch(e) {}
