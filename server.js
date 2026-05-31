@@ -47,7 +47,7 @@ let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
   timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:'',
-  smtpUser:'', smtpPass:'', privateKey:''
+  smtpUser:'', smtpPass:'', privateKey:'', resendKey:''
 };
 let overdueTimers = {};
 let digestCronJob = null;
@@ -89,32 +89,30 @@ function fmtTime(t) {
   const [h,m]=t.split(':');
   return `${+h%12||12}:${m} ${+h>=12?'PM':'AM'}`;
 }
-// ── EMAIL via EmailJS REST API (works on Railway, no SMTP ports needed) ──
-function emailReady() { return !!(cfg.email && cfg.pubkey && cfg.service && cfg.template); }
+// ── EMAIL via Resend API ──────────────────────────────
+function emailReady() { return !!(cfg.email && cfg.resendKey); }
 
 async function sendEmail(subject, message, type) {
-  if (!emailReady()) { console.log('Email not configured'); return false; }
+  if (!emailReady()) { console.log('Email not configured — need email + resendKey'); return false; }
   try {
     const payload = {
-      service_id:  cfg.service,
-      template_id: cfg.template,
-      user_id:     cfg.pubkey,
-      accessToken: cfg.privateKey || undefined,
-      template_params: {
-        to_email: cfg.email,
-        subject:  subject,
-        message:  message,
-        cc_email: cfg.cc || ''
-      }
+      from: 'Task Tracker <onboarding@resend.dev>',
+      to: [cfg.email],
+      cc: cfg.cc ? [cfg.cc] : undefined,
+      subject: subject,
+      html: message
     };
-    console.log(`[${type}] Sending via EmailJS to ${cfg.email}...`);
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    console.log(`[${type}] Sending via Resend to ${cfg.email}...`);
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.resendKey}`
+      },
       body: JSON.stringify(payload)
     });
     const responseText = await res.text();
-    console.log(`[${type}] EmailJS response: ${res.status} — ${responseText}`);
+    console.log(`[${type}] Resend response: ${res.status} — ${responseText}`);
     if (!res.ok) throw new Error(`${res.status}: ${responseText}`);
     console.log(`[${type}] Email sent OK: ${subject}`);
     return true;
@@ -252,7 +250,7 @@ app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
     adminPin:cfg.adminPin, editorPin:cfg.editorPin, backendUrl:cfg.backendUrl,
     email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
-    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey });
+    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey, resendKey:cfg.resendKey });
 });
 
 app.post('/config', async(req,res) => {

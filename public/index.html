@@ -234,15 +234,11 @@
       <input type="text" id="s-name" placeholder="e.g. Salwa">
     </div>
     <div class="divider"></div>
-    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Outlook SMTP — sends emails automatically</p>
+    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.75rem">Resend API — sends emails automatically</p>
     <div class="field">
-      <label>Outlook sending address</label>
-      <input type="email" id="s-smtp-user" placeholder="sender@zaicor.com">
-    </div>
-    <div class="field">
-      <label>Outlook password</label>
-      <input type="password" id="s-smtp-pass" placeholder="Your Outlook password" autocomplete="new-password">
-      <div class="hint">If MFA is enabled, use an App Password from account.microsoft.com</div>
+      <label>Resend API Key</label>
+      <input type="password" id="s-resend-key" placeholder="re_xxxxxxxxxxxxxxxx" autocomplete="new-password">
+      <div class="hint">Get your API key from <a href="https://resend.com/api-keys" target="_blank" style="color:var(--blue)">resend.com/api-keys</a></div>
     </div>
     <div class="divider"></div>
     <div class="grid2">
@@ -322,7 +318,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'' };
+  adminPin:'', editorPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'' };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -670,8 +666,7 @@ function openSettings() {
   document.getElementById('s-email').value = cfg.email||'';
   document.getElementById('s-name').value = cfg.name||'';
   const ccEl2 = document.getElementById('s-cc'); if(ccEl2) ccEl2.value = cfg.cc||'';
-  const smtpU = document.getElementById('s-smtp-user'); if(smtpU) smtpU.value = cfg.smtpUser||'';
-  const smtpP = document.getElementById('s-smtp-pass'); if(smtpP) { smtpP.value = ''; smtpP.placeholder = cfg.smtpPass ? '(password saved — enter new one to change)' : 'Your Outlook password'; }
+  const resendEl = document.getElementById('s-resend-key'); if(resendEl) { resendEl.value = ''; resendEl.placeholder = cfg.resendKey ? '(key saved — enter new one to change)' : 're_xxxxxxxxxxxxxxxx'; }
   document.getElementById('s-digest-time').value = cfg.digestTime||'08:00';
   const tzSel = document.getElementById('s-timezone');
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
@@ -688,9 +683,8 @@ function saveSettings() {
   cfg.email = document.getElementById('s-email').value.trim();
   cfg.name = document.getElementById('s-name').value.trim();
   cfg.cc = (document.getElementById('s-cc')||{value:''}).value.trim();
-  cfg.smtpUser = (document.getElementById('s-smtp-user')||{value:''}).value.trim();
-  const sp = (document.getElementById('s-smtp-pass')||{value:''}).value.trim();
-  if (sp) cfg.smtpPass = sp; // only overwrite if a new password was entered
+  const rk = (document.getElementById('s-resend-key')||{value:''}).value.trim();
+  if (rk) cfg.resendKey = rk;
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
   cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
