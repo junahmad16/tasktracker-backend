@@ -95,6 +95,18 @@
   .priority-badge.medium{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
   .priority-badge.low{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
   .recur-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;letter-spacing:.03em;flex-shrink:0;border:1px solid;background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+  .comment-count{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .12s}
+  .comment-count:hover{border-color:var(--blue-border);color:var(--blue);background:var(--blue-bg)}
+  .comment-panel{border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:none}
+  .comment-panel.open{display:block}
+  .comment-item{padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px}
+  .comment-item-meta{font-size:11px;color:var(--text-hint);margin-bottom:3px;display:flex;gap:6px}
+  .comment-item-text{font-size:13px;color:var(--text);line-height:1.4}
+  .comment-input-row{display:flex;gap:6px;margin-top:8px}
+  .comment-input-row input{flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none}
+  .comment-input-row input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-bg)}
+  .comment-input-row button{font-size:12px;font-weight:600;padding:6px 12px;border-radius:var(--radius);border:none;background:var(--blue);color:#fff;cursor:pointer;transition:opacity .12s}
+  .comment-input-row button:hover{opacity:.85}
   .tc-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--text-muted);margin-bottom:10px}
   .tc-overdue{display:inline-block;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;padding:2px 8px;margin-bottom:10px}
   .tc-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px}
@@ -253,10 +265,16 @@
       <div class="hint">Get your API key from <a href="https://resend.com/api-keys" target="_blank" style="color:var(--blue)">resend.com/api-keys</a></div>
     </div>
     <div class="divider"></div>
-    <div class="grid2">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="field">
         <label>Morning digest time</label>
         <input type="time" id="s-digest-time" value="08:00">
+        <div class="hint">Overdue + due today summary</div>
+      </div>
+      <div class="field">
+        <label>End-of-day summary time</label>
+        <input type="time" id="s-eod-time" value="17:00">
+        <div class="hint">All tasks + latest comments</div>
       </div>
       <div class="field">
         <label>Timezone</label>
@@ -269,6 +287,7 @@
           <option value="UTC">UTC</option>
         </select>
       </div>
+    </div>
     </div>
     <div class="field">
       <label>Backend URL <span style="color:var(--text-hint);font-weight:400">(paste your Railway URL here)</span></label>
@@ -377,7 +396,7 @@
 // ── PERSISTENCE ──────────────────────────────────────
 const CFG_KEY = 'tt_cfg', TASKS_KEY = 'tt_tasks', DIGEST_KEY = 'tt_digest';
 let cfg = { email:'', pubkey:'', service:'', template:'', digestTime:'08:00', name:'', backendUrl:'', timezone:'Asia/Riyadh',
-  adminPin:'', editorPin:'', managerPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'', people:[] };
+  adminPin:'', editorPin:'', managerPin:'', cc:'', smtpUser:'', smtpPass:'', resendKey:'', eodTime:'17:00', people:[] };
 
 // ── ROLES ─────────────────────────────────────────────
 // 'admin' = full access | 'editor' = add/edit, no settings/delete | '' = not logged in
@@ -752,6 +771,7 @@ function openSettings() {
   const ccEl2 = document.getElementById('s-cc'); if(ccEl2) ccEl2.value = cfg.cc||'';
   const resendEl = document.getElementById('s-resend-key'); if(resendEl) { resendEl.value = ''; resendEl.placeholder = cfg.resendKey ? '(key saved — enter new one to change)' : 're_xxxxxxxxxxxxxxxx'; }
   document.getElementById('s-digest-time').value = cfg.digestTime||'08:00';
+  const eodEl = document.getElementById('s-eod-time'); if(eodEl) eodEl.value = cfg.eodTime||'17:00';
   const tzSel = document.getElementById('s-timezone');
   if (tzSel) tzSel.value = cfg.timezone||'Asia/Riyadh';
   const backendEl = document.getElementById('s-backend');
@@ -772,6 +792,7 @@ function saveSettings() {
   const rk = (document.getElementById('s-resend-key')||{value:''}).value.trim();
   if (rk) cfg.resendKey = rk;
   cfg.digestTime = document.getElementById('s-digest-time').value||'08:00';
+  cfg.eodTime = (document.getElementById('s-eod-time')||{value:'17:00'}).value||'17:00';
   cfg.backendUrl = (document.getElementById('s-backend')||{}).value?.trim().replace(/\/+$/,'') || '';
   cfg.timezone = (document.getElementById('s-timezone')||{}).value || 'Asia/Riyadh';
   const newAdminPin = (document.getElementById('s-admin-pin')||{}).value?.trim();
@@ -1185,6 +1206,79 @@ function renderDashboard() {
     </div>`;
 }
 
+// ── COMMENTS ──────────────────────────────────────────
+function toggleComments(id) {
+  const panel = document.getElementById('cp-' + id);
+  if (!panel) return;
+  panel.classList.toggle('open');
+}
+
+function addComment(id) {
+  const input = document.getElementById('ci-' + id);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  if (!Array.isArray(task.comments)) task.comments = [];
+  task.comments.push({
+    text,
+    author: currentRole,
+    ts: new Date().toISOString()
+  });
+  input.value = '';
+  saveTasks();
+  renderCommentPanel(id);
+  // Update comment count badge
+  const badge = document.getElementById('cb-' + id);
+  if (badge) badge.textContent = '💬 ' + task.comments.length;
+}
+
+function renderCommentPanel(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  const panel = document.getElementById('cp-' + id);
+  if (!panel) return;
+  const comments = Array.isArray(task.comments) ? task.comments : [];
+  panel.innerHTML = `
+    ${comments.length ? comments.map(c => `
+      <div class="comment-item">
+        <div class="comment-item-meta">
+          <span style="font-weight:600;text-transform:capitalize">${esc(c.author||'user')}</span>
+          <span>·</span>
+          <span>${new Date(c.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div class="comment-item-text">${esc(c.text)}</div>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--text-hint);padding:4px 0 8px">No comments yet.</div>'}
+    <div class="comment-input-row">
+      <input type="text" id="ci-${id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')addComment('${id}')">
+      <button onclick="addComment('${id}')">Post</button>
+    </div>`;
+}
+
+function buildCommentHtml(id) {
+  const task = tasks.find(t => t.id === id);
+  const comments = task && Array.isArray(task.comments) ? task.comments : [];
+  const count = comments.length;
+  return `
+    <span id="cb-${id}" class="comment-count" onclick="toggleComments('${id}')">💬 ${count}</span>
+    <div class="comment-panel" id="cp-${id}">
+      ${count ? comments.map(c => `
+        <div class="comment-item">
+          <div class="comment-item-meta">
+            <span style="font-weight:600;text-transform:capitalize">${esc(c.author||'user')}</span>
+            <span>·</span>
+            <span>${new Date(c.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+          </div>
+          <div class="comment-item-text">${esc(c.text)}</div>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--text-hint);padding:4px 0 8px">No comments yet.</div>'}
+      <div class="comment-input-row">
+        <input type="text" id="ci-${id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')addComment('${id}')">
+        <button onclick="addComment('${id}')">Post</button>
+      </div>
+    </div>`;
+}
+
 function render() {
   const q  = document.getElementById('search-input')?.value?.toLowerCase()||'';
   const fs = document.getElementById('filter-status')?.value||'';
@@ -1249,6 +1343,7 @@ function render() {
         ${!t.done?`<button class="act-btn done-btn" onclick="markDone('${t.id}')">✓ Mark done</button>`:''}
         <button class="act-btn" onclick="openEditTask('${t.id}')">Edit</button>
         ${canDelete()?`<button class="act-btn del-btn" onclick="deleteTask('${t.id}')">Delete</button>`:''}
+        ${buildCommentHtml(t.id)}
       </div>
     </div>`;
   }).join('');
@@ -1295,9 +1390,11 @@ async function initFromBackend() {
       const cData = await cRes.json();
       const peopleSaved = cfg.people || [];
       const managerPinSaved = cfg.managerPin || '';
+      const eodTimeSaved = cfg.eodTime || '17:00';
       cfg = { ...cfg, ...cData };
       if (!Array.isArray(cfg.people) || cfg.people.length === 0) cfg.people = peopleSaved;
       if (!cfg.managerPin) cfg.managerPin = managerPinSaved;
+      if (!cfg.eodTime) cfg.eodTime = eodTimeSaved;
       saveCfg();
     }
   } catch(e) { console.warn('Could not reach backend on load:', e.message); }
@@ -1332,9 +1429,11 @@ async function startup() {
         const cData = await cRes.json();
         const peopleSaved = cfg.people || [];
         const managerPinSaved = cfg.managerPin || '';
+        const eodTimeSaved = cfg.eodTime || '17:00';
         cfg = { ...cfg, ...cData };
         if (!Array.isArray(cfg.people) || cfg.people.length === 0) cfg.people = peopleSaved;
         if (!cfg.managerPin) cfg.managerPin = managerPinSaved;
+        if (!cfg.eodTime) cfg.eodTime = eodTimeSaved;
         saveCfg();
       }
     } catch(e) { console.warn('Could not reach backend on startup:', e.message); }

@@ -47,7 +47,7 @@ let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
   timezone:'Asia/Riyadh', adminPin:'', editorPin:'', managerPin:'', cc:'',
-  smtpUser:'', smtpPass:'', privateKey:'', resendKey:''
+  smtpUser:'', smtpPass:'', privateKey:'', resendKey:'', eodTime:'17:00'
 };
 let overdueTimers = {};
 let digestCronJob = null;
@@ -198,6 +198,92 @@ function buildInstantHtml(t) {
 </div>`;
 }
 
+let eodCronJob = null;
+
+function buildEodHtml(allTasks) {
+  const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const byEmployee = {};
+  allTasks.forEach(t => {
+    const n = t.assignedTo||'Unassigned';
+    if (!byEmployee[n]) byEmployee[n] = [];
+    byEmployee[n].push(t);
+  });
+  const ord = {overdue:0,'due-today':1,'due-soon':2,pending:3,done:4};
+  Object.keys(byEmployee).forEach(n => byEmployee[n].sort((a,b)=>(ord[getStatus(a)]||3)-(ord[getStatus(b)]||3)));
+
+  const tables = Object.keys(byEmployee).sort().map(name => {
+    const taskList = byEmployee[name];
+    const rows = taskList.map(t => {
+      const s = getStatus(t), ov = overdueStr(t);
+      const bg = s==='overdue'?'#FFF8F8':s==='done'?'#F6FBF8':'#FFFFFF';
+      const lastComment = Array.isArray(t.comments) && t.comments.length
+        ? t.comments[t.comments.length-1] : null;
+      const commentCell = lastComment
+        ? `<div style="margin-top:6px;padding:6px 8px;background:#F7F6F2;border-left:3px solid #C9C6BE;border-radius:0 4px 4px 0;font-size:12px;color:#6B6960"><span style="font-weight:600;text-transform:capitalize">${lastComment.author||'user'}:</span> ${lastComment.text}</div>`
+        : '';
+      const priorityStyle = t.priority==='high'?'color:#C1392B;font-weight:700':t.priority==='medium'?'color:#B7670A;font-weight:600':t.priority==='low'?'color:#2A6E3F':'color:#9E9B93';
+      return `<tr style="background:${bg}">
+        <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#1A1916;line-height:1.4">
+          ${t.details}${commentCell}
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#6B6960;white-space:nowrap">${t.assignedBy||'—'}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:12px;${priorityStyle};white-space:nowrap;text-transform:capitalize">${t.priority||'—'}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:13px;color:#6B6960;white-space:nowrap">${fmtDate(t.dueDate)}${t.dueTime?'<br><span style="font-size:11px">'+fmtTime(t.dueTime)+'</span>':''}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;text-align:center">${statusBadgeHtml(s)}</td>
+        ${s==='overdue'?`<td style="padding:10px 12px;border-bottom:1px solid #EEEBE4;font-size:12px;color:#C1392B;font-weight:600;white-space:nowrap;font-family:monospace">${ov}</td>`:`<td style="padding:10px 12px;border-bottom:1px solid #EEEBE4"></td>`}
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:28px">
+      <div style="background:#1A1916;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;font-family:Arial,sans-serif">
+        ${name} <span style="font-weight:400;font-size:12px;opacity:0.7;margin-left:8px">${taskList.length} task${taskList.length>1?'s':''}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #EEEBE4;border-top:none;font-family:Arial,sans-serif">
+        <thead><tr style="background:#F7F6F2">
+          <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4">Task</th>
+          <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Assigned by</th>
+          <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4">Priority</th>
+          <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Due</th>
+          <th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4">Status</th>
+          <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;color:#9E9B93;border-bottom:1px solid #EEEBE4;white-space:nowrap">Overdue by</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const total = allTasks.length;
+  const overdueCount = allTasks.filter(t=>!t.done&&getStatus(t)==='overdue').length;
+  const doneCount = allTasks.filter(t=>t.done).length;
+
+  return `<div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;color:#1A1916">
+    <div style="margin-bottom:24px">
+      <h2 style="font-size:18px;font-weight:600;margin:0 0 4px">End-of-Day Task Summary</h2>
+      <p style="font-size:13px;color:#6B6960;margin:0">${dateStr} &nbsp;·&nbsp; ${total} total &nbsp;·&nbsp; ${overdueCount} overdue &nbsp;·&nbsp; ${doneCount} done</p>
+    </div>
+    <p style="font-size:14px;margin-bottom:20px">Hi ${cfg.name||'there'}, here is your end-of-day summary of all tasks, grouped by employee.</p>
+    ${tables}
+    <p style="font-size:12px;color:#9E9B93;margin-top:16px;border-top:1px solid #EEEBE4;padding-top:12px">Sent by Task Tracker &nbsp;·&nbsp; ${new Date().toLocaleString('en-GB')}</p>
+  </div>`;
+}
+
+function startEodCron() {
+  if (eodCronJob) eodCronJob.stop();
+  if (!cfg.email || !cfg.resendKey) { console.log('EOD cron paused — email not configured'); return; }
+  const [h,m] = (cfg.eodTime||'17:00').split(':');
+  const cronExpr = `${parseInt(m)} ${parseInt(h)} * * *`;
+  const tz = cfg.timezone||'Asia/Riyadh';
+  console.log(`EOD cron: ${cfg.eodTime} (${cronExpr}) tz:${tz}`);
+  eodCronJob = cron.schedule(cronExpr, async () => {
+    console.log('End-of-day summary firing...');
+    const activeTasks = tasks.filter(t => !t.done || getStatus(t)==='done');
+    console.log(`EOD: ${activeTasks.length} tasks total`);
+    await sendEmail(
+      `📊 End-of-day summary — ${tasks.length} tasks`,
+      buildEodHtml(tasks), 'eod'
+    );
+  }, { timezone: tz });
+}
+
 // ── SCHEDULER ─────────────────────────────────────────
 function clearAllOverdueTimers() { Object.values(overdueTimers).forEach(clearTimeout); overdueTimers={}; }
 
@@ -250,14 +336,16 @@ app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
     adminPin:cfg.adminPin, editorPin:cfg.editorPin, managerPin:cfg.managerPin, backendUrl:cfg.backendUrl,
     email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
-    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey, resendKey:cfg.resendKey });
+    smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey, resendKey:cfg.resendKey,
+    eodTime:cfg.eodTime });
 });
 
 app.post('/config', async(req,res) => {
   cfg = { ...cfg, ...req.body };
   await dbSet('config', cfg);
-  console.log(`Config saved: digest:${cfg.digestTime} email:${cfg.email}`);
+  console.log(`Config saved: digest:${cfg.digestTime} eod:${cfg.eodTime} email:${cfg.email}`);
   startDigestCron();
+  startEodCron();
   scheduleAllInstantAlerts();
   res.json({ ok:true });
 });
@@ -286,6 +374,7 @@ async function start() {
   await initDB();
   await loadFromDB();
   startDigestCron();
+  startEodCron();
   scheduleAllInstantAlerts();
   app.listen(PORT, () => {
     console.log(`Task Tracker backend on port ${PORT}`);
