@@ -279,6 +279,7 @@
     </div>
     <div class="modal-footer spread">
       <button class="btn-ghost" onclick="triggerTestDigest()">Send test email</button>
+      <button class="btn-ghost" id="migrate-btn" onclick="migrateTasksFromRailway()" style="display:none">Import Railway tasks</button>
       <div style="display:flex;gap:8px">
         <button class="btn-ghost" onclick="closeSettings()">Cancel</button>
         <button class="btn-primary" onclick="saveSettings()">Save settings</button>
@@ -475,6 +476,24 @@ function statusLabel(s) { return {overdue:'Overdue','due-today':'Due today','due
 
 // ── EMAIL ────────────────────────────────────────────
 function emailReady() { return !!(cfg.email&&cfg.smtpUser&&cfg.smtpPass); }
+
+async function migrateTasksFromRailway() {
+  const tasks = [{"id":"mptgm4w4nci6bg1mw8a","details":"3Points Meeting","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgjjp76iy56pqn6gu","details":"Research Company","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgd6sc4rgvqvwinhy","details":"Persil KSA Activation (Follow-Up)","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-31","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mpdp3ro477g9uax3u46","details":"Project for Persil and DAC","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-20","dueTime":"12:00","done":true},{"id":"mpcpad338px5jl4qobn","details":"Pricelist and Supplier List","assignedTo":"Sohaib","assignedBy":"Salwa","assignedDate":"2026-05-18","dueDate":"2026-05-20","dueTime":"10:30","done":false},{"id":"mpawdwy2ff5tnaolhh","details":"Persil KSA Activation","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-21","dueTime":"10:30","done":true},{"id":"mpaw9k3hdmhu92cznv9","details":"LAPIARA PPT","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-18","dueTime":"13:00","done":true},{"id":"mp9th337fcrcdgjxo3w","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Sadeem","assignedBy":"Salwa","assignedDate":"2026-05-20","dueDate":"2026-05-21","dueTime":"17:00","done":true},{"id":"mp598jhisja8idyvnwh","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-19","dueTime":"04:00","done":true},{"id":"mp594b9s9etuxpqn30t","details":"Merchandiser for SADAFO","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"11:00","done":true},{"id":"mp5935c0yuhb6jgvjh","details":"Cold Van & Storage Arrangement","assignedTo":"Abid","assignedBy":"Salwa","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"05:52","done":true},{"id":"mp58n843j7c87gkbx0p","details":"Task - Visit Grocery Stores for SADAFCO Display Agreements","assignedTo":"Suhaib","assignedBy":"Salwa","assignedDate":"2026-05-05","dueDate":"2026-05-14","dueTime":"17:00","done":true},{"id":"mp58l11v9se7zrbo31","details":"Scent Diffuser","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-05","dueDate":"2026-05-07","dueTime":"17:00","done":false},{"id":"mp58jlf70pyyr2zzl65o","details":"Collabrtion With Biscuts","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-17","dueTime":"14:00","done":false},{"id":"mp58i0xfb86v911g9da","details":"Collabrtion With Slushi","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-14","dueTime":"00:29","done":true},{"id":"mp58h9w48182kgz0jri","details":"Balhamer Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"16:00","done":false},{"id":"mp58gnzgtvkeo9lceol","details":"Kwality Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"17:00","done":false}];
+  try {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tasks})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('Migration successful! ' + data.count + ' tasks imported.');
+      window.location.reload();
+    } else {
+      alert('Failed: ' + JSON.stringify(data));
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+}
 
 async function triggerTestDigest() {
   if (!cfg.backendUrl) { alert('Backend URL not configured.'); return; }
@@ -700,6 +719,24 @@ function saveSettings() {
   renderSetupBanner();
   render();
 }
+async function migrateTasksFromRailway() {
+  const tasks = [{"id":"mptgm4w4nci6bg1mw8a","details":"3Points Meeting","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgjjp76iy56pqn6gu","details":"Research Company","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgd6sc4rgvqvwinhy","details":"Persil KSA Activation (Follow-Up)","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-31","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mpdp3ro477g9uax3u46","details":"Project for Persil and DAC","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-20","dueTime":"12:00","done":true},{"id":"mpcpad338px5jl4qobn","details":"Pricelist and Supplier List","assignedTo":"Sohaib","assignedBy":"Salwa","assignedDate":"2026-05-18","dueDate":"2026-05-20","dueTime":"10:30","done":false},{"id":"mpawdwy2ff5tnaolhh","details":"Persil KSA Activation","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-21","dueTime":"10:30","done":true},{"id":"mpaw9k3hdmhu92cznv9","details":"LAPIARA PPT","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-18","dueTime":"13:00","done":true},{"id":"mp9th337fcrcdgjxo3w","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Sadeem","assignedBy":"Salwa","assignedDate":"2026-05-20","dueDate":"2026-05-21","dueTime":"17:00","done":true},{"id":"mp598jhisja8idyvnwh","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-19","dueTime":"04:00","done":true},{"id":"mp594b9s9etuxpqn30t","details":"Merchandiser for SADAFO","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"11:00","done":true},{"id":"mp5935c0yuhb6jgvjh","details":"Cold Van & Storage Arrangement","assignedTo":"Abid","assignedBy":"Salwa","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"05:52","done":true},{"id":"mp58n843j7c87gkbx0p","details":"Task - Visit Grocery Stores for SADAFCO Display Agreements","assignedTo":"Suhaib","assignedBy":"Salwa","assignedDate":"2026-05-05","dueDate":"2026-05-14","dueTime":"17:00","done":true},{"id":"mp58l11v9se7zrbo31","details":"Scent Diffuser","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-05","dueDate":"2026-05-07","dueTime":"17:00","done":false},{"id":"mp58jlf70pyyr2zzl65o","details":"Collabrtion With Biscuts","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-17","dueTime":"14:00","done":false},{"id":"mp58i0xfb86v911g9da","details":"Collabrtion With Slushi","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-14","dueTime":"00:29","done":true},{"id":"mp58h9w48182kgz0jri","details":"Balhamer Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"16:00","done":false},{"id":"mp58gnzgtvkeo9lceol","details":"Kwality Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"17:00","done":false}];
+  try {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tasks})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('Migration successful! ' + data.count + ' tasks imported.');
+      window.location.reload();
+    } else {
+      alert('Failed: ' + JSON.stringify(data));
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 async function triggerTestDigest() {
   const url = cfg.backendUrl || window.location.origin;
   try {
@@ -708,6 +745,24 @@ async function triggerTestDigest() {
     alert(data.ok ? 'Test email sent successfully!' : 'Failed — check Railway logs. Details: ' + JSON.stringify(data));
   } catch(e) { alert('Could not reach backend: ' + e.message); }
 }
+async function migrateTasksFromRailway() {
+  const tasks = [{"id":"mptgm4w4nci6bg1mw8a","details":"3Points Meeting","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgjjp76iy56pqn6gu","details":"Research Company","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-24","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mptgd6sc4rgvqvwinhy","details":"Persil KSA Activation (Follow-Up)","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-31","dueDate":"2026-06-02","dueTime":"10:30","done":false},{"id":"mpdp3ro477g9uax3u46","details":"Project for Persil and DAC","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-20","dueTime":"12:00","done":true},{"id":"mpcpad338px5jl4qobn","details":"Pricelist and Supplier List","assignedTo":"Sohaib","assignedBy":"Salwa","assignedDate":"2026-05-18","dueDate":"2026-05-20","dueTime":"10:30","done":false},{"id":"mpawdwy2ff5tnaolhh","details":"Persil KSA Activation","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-21","dueTime":"10:30","done":true},{"id":"mpaw9k3hdmhu92cznv9","details":"LAPIARA PPT","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-13","dueDate":"2026-05-18","dueTime":"13:00","done":true},{"id":"mp9th337fcrcdgjxo3w","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Sadeem","assignedBy":"Salwa","assignedDate":"2026-05-20","dueDate":"2026-05-21","dueTime":"17:00","done":true},{"id":"mp598jhisja8idyvnwh","details":"Key 2026 Marketing & Activation Dates","assignedTo":"Ahmad","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-19","dueTime":"04:00","done":true},{"id":"mp594b9s9etuxpqn30t","details":"Merchandiser for SADAFO","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"11:00","done":true},{"id":"mp5935c0yuhb6jgvjh","details":"Cold Van & Storage Arrangement","assignedTo":"Abid","assignedBy":"Salwa","assignedDate":"2026-05-10","dueDate":"2026-05-14","dueTime":"05:52","done":true},{"id":"mp58n843j7c87gkbx0p","details":"Task - Visit Grocery Stores for SADAFCO Display Agreements","assignedTo":"Suhaib","assignedBy":"Salwa","assignedDate":"2026-05-05","dueDate":"2026-05-14","dueTime":"17:00","done":true},{"id":"mp58l11v9se7zrbo31","details":"Scent Diffuser","assignedTo":"Suhaib","assignedBy":"Ahmad","assignedDate":"2026-05-05","dueDate":"2026-05-07","dueTime":"17:00","done":false},{"id":"mp58jlf70pyyr2zzl65o","details":"Collabrtion With Biscuts","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-17","dueTime":"14:00","done":false},{"id":"mp58i0xfb86v911g9da","details":"Collabrtion With Slushi","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-14","dueDate":"2026-05-14","dueTime":"00:29","done":true},{"id":"mp58h9w48182kgz0jri","details":"Balhamer Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"16:00","done":false},{"id":"mp58gnzgtvkeo9lceol","details":"Kwality Waiting Client Approval","assignedTo":"Heba","assignedBy":"Salwa","assignedDate":"2026-05-03","dueDate":"2026-05-17","dueTime":"17:00","done":false}];
+  try {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tasks})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('Migration successful! ' + data.count + ' tasks imported.');
+      window.location.reload();
+    } else {
+      alert('Failed: ' + JSON.stringify(data));
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 async function triggerTestDigest() {
   const url = cfg.backendUrl || window.location.origin;
   try {
