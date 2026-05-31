@@ -216,7 +216,7 @@ function scheduleAllInstantAlerts() { clearAllOverdueTimers(); tasks.forEach(t=>
 
 function startDigestCron() {
   if (digestCronJob) digestCronJob.stop();
-  if (!cfg.email||!cfg.pubkey) { console.log('Email not configured — cron paused'); return; }
+  if (!cfg.email||!cfg.resendKey) { console.log('Email not configured — cron paused'); return; }
   const [h,m]=(cfg.digestTime||'08:00').split(':');
   const cronExpr=`${parseInt(m)} ${parseInt(h)} * * *`;
   const tz=cfg.timezone||'Asia/Riyadh';
