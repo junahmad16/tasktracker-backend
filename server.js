@@ -287,6 +287,18 @@ async function start() {
   await loadFromDB();
   startDigestCron();
   scheduleAllInstantAlerts();
-  app.listen(PORT, ()=>console.log(`Task Tracker backend on port ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Task Tracker backend on port ${PORT}`);
+    // Self-ping every 14 minutes to prevent Render free tier sleep
+    const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    setInterval(async () => {
+      try {
+        await fetch(url + '/health');
+        console.log('Keep-alive ping sent');
+      } catch(e) {
+        console.log('Keep-alive ping failed:', e.message);
+      }
+    }, 14 * 60 * 1000);
+  });
 }
 start().catch(console.error);
