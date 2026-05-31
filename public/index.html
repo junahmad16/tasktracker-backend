@@ -1278,8 +1278,10 @@ async function initFromBackend() {
     const cRes = await fetch(cfg.backendUrl + '/config');
     if (cRes.ok) {
       const cData = await cRes.json();
-      // Merge backend config — backend is authoritative for pins and schedule
+      // Merge backend config — preserve people list and frontend-only fields
+      const peopleSaved = cfg.people || [];
       cfg = { ...cfg, ...cData };
+      if (!Array.isArray(cfg.people) || cfg.people.length === 0) cfg.people = peopleSaved;
       saveCfg();
     }
   } catch(e) { console.warn('Could not reach backend on load:', e.message); }
@@ -1312,7 +1314,9 @@ async function startup() {
       const cRes = await fetch(cfg.backendUrl + '/config');
       if (cRes.ok) {
         const cData = await cRes.json();
+        const peopleSaved = cfg.people || [];
         cfg = { ...cfg, ...cData };
+        if (!Array.isArray(cfg.people) || cfg.people.length === 0) cfg.people = peopleSaved;
         saveCfg();
       }
     } catch(e) { console.warn('Could not reach backend on startup:', e.message); }
