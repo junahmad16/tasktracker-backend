@@ -387,10 +387,10 @@ function loadCfg() {
 function saveCfg()   { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 function loadTasks() { try { const s=localStorage.getItem(TASKS_KEY); if(s) tasks=JSON.parse(s); } catch(e){} }
 function saveTasks() {
-  try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch(e){}
   pushToBackend();
 }
 async function pushToBackend() {
+  if (window.location.protocol !== 'file:') cfg.backendUrl = window.location.origin;
   if (!cfg.backendUrl) { console.warn('No backendUrl set'); return; }
   try {
     const res = await fetch(cfg.backendUrl + '/tasks', {
@@ -412,6 +412,7 @@ async function pushToBackend() {
   }
 }
 async function pushConfigToBackend() {
+  if (window.location.protocol !== 'file:') cfg.backendUrl = window.location.origin;
   if (!cfg.backendUrl) return;
   try {
     const res = await fetch(cfg.backendUrl + '/config', {
