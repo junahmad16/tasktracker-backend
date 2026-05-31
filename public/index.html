@@ -93,6 +93,7 @@
   .priority-badge.high{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
   .priority-badge.medium{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
   .priority-badge.low{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+  .recur-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;letter-spacing:.03em;flex-shrink:0;border:1px solid;background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
   .tc-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--text-muted);margin-bottom:10px}
   .tc-overdue{display:inline-block;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;padding:2px 8px;margin-bottom:10px}
   .tc-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px}
@@ -324,6 +325,16 @@
         <option value="high">🔴 High</option>
         <option value="medium">🟠 Medium</option>
         <option value="low">🟢 Low</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Recurrence <span style="color:var(--text-hint);font-weight:400">(auto-creates next task when marked done)</span></label>
+      <select id="f-recur">
+        <option value="">— None —</option>
+        <option value="daily">🔁 Daily</option>
+        <option value="weekly">🔁 Weekly</option>
+        <option value="biweekly">🔁 Bi-weekly (every 2 weeks)</option>
+        <option value="monthly">🔁 Monthly</option>
       </select>
     </div>
     <div class="modal-footer">
@@ -814,6 +825,7 @@ function openAddTask() {
   document.getElementById('task-modal-title').textContent = 'Add new task';
   ['f-details','f-to','f-by','f-ddate','f-dtime'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-priority').value = '';
+  document.getElementById('f-recur').value = '';
   document.getElementById('f-adate').value = today();
   document.getElementById('task-modal').classList.add('open');
 }
@@ -828,6 +840,7 @@ function openEditTask(id) {
   document.getElementById('f-ddate').value = t.dueDate||'';
   document.getElementById('f-dtime').value = t.dueTime||'';
   document.getElementById('f-priority').value = t.priority||'';
+  document.getElementById('f-recur').value = t.recur||'';
   document.getElementById('task-modal').classList.add('open');
 }
 function closeTaskModal() { document.getElementById('task-modal').classList.remove('open'); }
@@ -842,15 +855,42 @@ function saveTask() {
     dueDate: document.getElementById('f-ddate').value,
     dueTime: document.getElementById('f-dtime').value,
     priority: document.getElementById('f-priority').value,
+    recur: document.getElementById('f-recur').value,
     done: editId ? (tasks.find(x=>x.id===editId)||{}).done||false : false,
   };
   tasks = editId ? tasks.map(x=>x.id===editId?t:x) : [t,...tasks];
   scheduleInstantAlert(t);
   saveTasks(); closeTaskModal(); render();
 }
+function nextDueDate(dateStr, recur) {
+  if (!dateStr || !recur) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (recur === 'daily')     d.setDate(d.getDate() + 1);
+  else if (recur === 'weekly')   d.setDate(d.getDate() + 7);
+  else if (recur === 'biweekly') d.setDate(d.getDate() + 14);
+  else if (recur === 'monthly')  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().split('T')[0];
+}
+
 function markDone(id) {
-  tasks = tasks.map(t=>t.id===id?{...t,done:true}:t);
+  const original = tasks.find(t => t.id === id);
+  tasks = tasks.map(t => t.id === id ? {...t, done:true} : t);
   if (overdueTimers[id]) { clearTimeout(overdueTimers[id]); delete overdueTimers[id]; }
+  // Spawn next occurrence for recurring tasks
+  if (original && original.recur && original.dueDate) {
+    const nextDate = nextDueDate(original.dueDate, original.recur);
+    if (nextDate) {
+      const next = {
+        ...original,
+        id: uid(),
+        done: false,
+        assignedDate: today(),
+        dueDate: nextDate,
+      };
+      tasks = [next, ...tasks];
+      scheduleInstantAlert(next);
+    }
+  }
   saveTasks(); render();
 }
 function deleteTask(id) {
@@ -896,6 +936,7 @@ function renderDashboard() {
   const allStatuses = tasks.map(t => getStatus(t));
   const counts = {overdue:0,'due-today':0,'due-soon':0,pending:0,done:0,total:tasks.length};
   allStatuses.forEach(s => { if(s in counts) counts[s]++; });
+  const recurringCount = tasks.filter(t => t.recur && !t.done).length;
 
   // Priority breakdown (exclude no-priority tasks from chart but count them)
   const pCounts = {high:0,medium:0,low:0,none:0};
@@ -921,10 +962,11 @@ function renderDashboard() {
   function barW(n,max){ return Math.max(Math.round((n/max)*100),3); }
 
   const statCards = [
-    {label:'Total tasks', val:counts.total, color:''},
-    {label:'Overdue',     val:counts.overdue, color:'var(--red)'},
-    {label:'Due today',   val:counts['due-today'], color:'var(--amber)'},
-    {label:'Done',        val:counts.done, color:'var(--green)'},
+    {label:'Total tasks',  val:counts.total,           color:''},
+    {label:'Overdue',      val:counts.overdue,          color:'var(--red)'},
+    {label:'Due today',    val:counts['due-today'],     color:'var(--amber)'},
+    {label:'Done',         val:counts.done,             color:'var(--green)'},
+    {label:'Recurring',    val:recurringCount,          color:'var(--blue)'},
   ].map(c=>`
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow)">
       <div style="font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px">${c.label}</div>
@@ -976,7 +1018,7 @@ function renderDashboard() {
     </div>
 
     <!-- Stat cards -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem">
       ${statCards}
     </div>
 
@@ -1068,6 +1110,7 @@ function render() {
       <div class="tc-header">
         <div class="tc-title">${esc(t.details)}</div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          ${t.recur?`<span class="recur-badge">🔁 ${t.recur==='biweekly'?'bi-weekly':t.recur}</span>`:''}
           ${t.priority?`<span class="priority-badge ${t.priority}">${t.priority}</span>`:''}
           <span class="badge ${s}">${statusLabel(s)}</span>
         </div>
