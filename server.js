@@ -46,7 +46,7 @@ let tasks = [];
 let cfg = {
   email:'', pubkey:'', service:'', template:'',
   digestTime:'08:00', name:'', backendUrl:'',
-  timezone:'Asia/Riyadh', adminPin:'', editorPin:'', cc:'',
+  timezone:'Asia/Riyadh', adminPin:'', editorPin:'', managerPin:'', cc:'',
   smtpUser:'', smtpPass:'', privateKey:'', resendKey:''
 };
 let overdueTimers = {};
@@ -248,7 +248,7 @@ app.post('/tasks', async(req,res) => {
 
 app.get('/config', (req,res) => {
   res.json({ digestTime:cfg.digestTime, timezone:cfg.timezone, name:cfg.name,
-    adminPin:cfg.adminPin, editorPin:cfg.editorPin, backendUrl:cfg.backendUrl,
+    adminPin:cfg.adminPin, editorPin:cfg.editorPin, managerPin:cfg.managerPin, backendUrl:cfg.backendUrl,
     email:cfg.email, pubkey:cfg.pubkey, service:cfg.service, template:cfg.template, cc:cfg.cc,
     smtpUser:cfg.smtpUser, smtpPass:cfg.smtpPass, privateKey:cfg.privateKey, resendKey:cfg.resendKey });
 });
